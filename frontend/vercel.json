@@ -1,4 +1,5 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "build": {
     "env": {
       "VITE_API_BASE_URL": "/api/v1"
@@ -6,7 +7,7 @@
   },
   "framework": null,
   "installCommand": "npm ci --include=dev",
-  "buildCommand": "npm run build",
+  "buildCommand": "node ./node_modules/typescript/bin/tsc -b && node ./node_modules/vite/bin/vite.js build",
   "outputDirectory": "dist",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }

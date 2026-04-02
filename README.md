@@ -275,7 +275,7 @@ No other `VITE_*` vars in this repo talk to the API. Code reference: `frontend/s
 - Config lives in **`frontend/vercel.json`**: `npm ci`, `npm run build`, `outputDirectory: dist`, SPA rewrite, and `build.env.VITE_API_BASE_URL`.
 - The API proxy is **`frontend/api/[...path].js`**. It must sit **next to** the Vite app so Vercel ships **both** `dist/` and `/api/*` in one deployment. A root-level `api/` with `outputDirectory: frontend/dist` often produced **NOT_FOUND** because functions were not bundled with the static output.
 
-If the build fails with **`vite build` exited with 127**, Vite/TypeScript were usually **not installed**: `NODE_ENV=production` can make `npm ci` **omit `devDependencies`**. This repo uses **`npm ci --include=dev`** in `frontend/vercel.json`. Clear any Vercel dashboard **Override** that sets Build Command to bare `vite build`. The `build` script uses **`npx vite build`** so the local binary is resolved.
+If the build fails with **`vite: command not found`** / **127**, (1) set **Root Directory** to **`frontend`** so `frontend/vercel.json` applies, (2) use **`npm ci --include=dev`** so `devDependencies` install, (3) in Vercel → **Build & Development**, clear **Build Command** / **Framework** overrides — bare **`vite build`** is not on `PATH`. This repo’s **`buildCommand`** runs **`node ./node_modules/vite/bin/vite.js build`** (no `vite` shim required).
 
 If you see **NOT_FOUND** (`bom1::…`): set Root Directory to **`frontend`**, redeploy from the latest **Production** build, and confirm **`BACKEND_API_ORIGIN`** is set if you rely on the proxy.
 
