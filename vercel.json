@@ -9,5 +9,8 @@
       "VITE_API_BASE_URL": "/api/v1"
     }
   },
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "handle": "filesystem" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }

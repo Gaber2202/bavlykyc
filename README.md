@@ -256,7 +256,7 @@ There is **only one** setting on the Vercel project that points the browser at y
 
 | Where | Variable | Required | Purpose |
 |--------|-----------|----------|--------|
-| **Vercel** → Project → Settings → Environment Variables | `BACKEND_API_ORIGIN` | **Yes** (for this repo’s proxy) | **Another host** where FastAPI runs — **not** your `*.vercel.app` URL (same domain loops and breaks login). Example: `https://kyc-api.onrender.com` with **no** `/api/v1`. Proxy: **`api/v1/[[...segments]].js`**. |
+| **Vercel** → Project → Settings → Environment Variables | `BACKEND_API_ORIGIN` | **Yes** (for this repo’s proxy) | **Another host** where FastAPI runs — **not** your `*.vercel.app` URL (same domain loops and breaks login). Example: `https://kyc-api.onrender.com` with **no** `/api/v1`. Proxy: **`api/v1/[...slug].js`** + **`rewrites` → `handle: filesystem`** before SPA. |
 | **Vercel** build (root **`vercel.json`** → `build.env`) | `VITE_API_BASE_URL` | Default `/api/v1` | Browser calls **same** Vercel host (e.g. `https://project-w8zqj.vercel.app/api/v1/...`). Override in the dashboard if you point the SPA at an external API instead. |
 | **Backend** `.env` / host env | `CORS_ORIGINS` | **Yes** | Must include your SPA origin, e.g. `https://project-w8zqj.vercel.app` (comma-separated, no spaces, no trailing slash). |
 
@@ -271,7 +271,7 @@ No other `VITE_*` vars in this repo talk to the API. Code reference: `frontend/s
 
 #### Root Directory
 
-- Leave **Root Directory empty** (repository root). Vercel reads **`vercel.json`** at the repo root: `cd frontend && npm ci --include=dev`, TypeScript + Vite via **`node ./node_modules/...`**, **`outputDirectory`: `frontend/dist`**, SPA rewrite, and **`api/v1/[[...segments]].js`** for **`/api/v1/*`**.
+- Leave **Root Directory empty** (repository root). Vercel reads **`vercel.json`**: `cd frontend` install/build, **`outputDirectory`: `frontend/dist`**, **`{ "handle": "filesystem" }`** then SPA fallback, and **`api/v1/[...slug].js`** for **`/api/v1/*`**. Without **filesystem** first, **POST /api/v1/...** can hit **`index.html`** → **405**.
 - Do **not** set Root Directory to **`frontend`** unless you add your own `frontend/vercel.json` and `frontend/api/` again — the committed layout assumes **monorepo root**.
 
 If the build fails with **`vite: command not found`** / **127**, clear Vercel **Build Command** overrides (bare `vite build` fails). Root `vercel.json` already uses **`node ./node_modules/vite/bin/vite.js build`** after `cd frontend`.

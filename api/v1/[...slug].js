@@ -1,7 +1,7 @@
 /**
  * Proxies /api/v1/* to FastAPI at BACKEND_API_ORIGIN.
- * Use api/v1/[[...segments]].js so Vercel matches /api/v1/... before the SPA rewrite;
- * a single api/[...path].js can miss /api/v1/* and POST then hits index.html → 405.
+ * File api/v1/[...slug].js → route /api/v1/* (required catch-all).
+ * vercel.json must use { "handle": "filesystem" } before SPA rewrite or POST hits index.html → 405.
  */
 
 function hostnameFrom(value) {
