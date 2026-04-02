@@ -257,6 +257,8 @@ This app is a client-side React router SPA. Deploy the static `frontend` build; 
 3. **CORS**: add your Vercel production URL to backend `CORS_ORIGINS` (see §8).
 4. Redeploy after changing `vercel.json` or env.
 
+If the build fails with **`vite build` exited with 127**, Vercel is running the Vite preset’s default command (`vite` not on `PATH`). Either set **Build Command** to `npm run build`, or keep Root Directory `frontend` so `frontend/vercel.json` overrides install/build (uses `npm ci` + `npm run build`).
+
 If you see Vercel **404 NOT_FOUND** (with a deployment id), the project often used the wrong root (no `dist` output) or deep links lacked an SPA rewrite—use the layout above.
 
 **Separate API subdomain (recommended for this repo):**
