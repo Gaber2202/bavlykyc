@@ -4,12 +4,43 @@
  * a single api/[...path].js can miss /api/v1/* and POST then hits index.html → 405.
  */
 
+function hostnameFrom(value) {
+  if (!value || typeof value !== "string") return "";
+  const v = value.trim();
+  try {
+    if (v.includes("://")) return new URL(v).hostname.toLowerCase();
+  } catch {
+    /* ignore */
+  }
+  return v.split(":")[0].toLowerCase();
+}
+
 export default async function handler(req, res) {
   const backend = process.env.BACKEND_API_ORIGIN?.replace(/\/$/, "");
   if (!backend) {
     res.status(503).json({
       detail:
         "Set BACKEND_API_ORIGIN in Vercel (Environment Variables), e.g. https://your-api.example.com",
+    });
+    return;
+  }
+
+  const backendHost = hostnameFrom(backend);
+  const requestHost = hostnameFrom(
+    Array.isArray(req.headers.host) ? req.headers.host[0] : req.headers.host,
+  );
+  const vercelHost = process.env.VERCEL_URL
+    ? hostnameFrom(`https://${process.env.VERCEL_URL}`)
+    : "";
+
+  if (
+    backendHost &&
+    (backendHost === requestHost ||
+      (vercelHost && backendHost === vercelHost))
+  ) {
+    res.status(503).json({
+      detail:
+        "BACKEND_API_ORIGIN must NOT be this Vercel app URL. Deploy FastAPI on another host (Render, Railway, Fly.io, a VPS, etc.) and set BACKEND_API_ORIGIN to that host only, e.g. https://my-api.onrender.com — no /api/v1. Using the same domain makes the proxy call itself and login will never work.",
     });
     return;
   }
