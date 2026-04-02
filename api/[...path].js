@@ -1,7 +1,6 @@
 /**
- * Proxies /api/* (including /api/v1/...) to FastAPI at BACKEND_API_ORIGIN.
- * Must live under frontend/api/ when Vercel "Root Directory" is `frontend` so
- * functions ship with the same deployment as `dist/`.
+ * Proxies /api/* to FastAPI at BACKEND_API_ORIGIN.
+ * Lives at repo root api/ when Vercel "Root Directory" is empty (monorepo root).
  */
 
 export default async function handler(req, res) {

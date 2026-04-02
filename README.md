@@ -256,8 +256,8 @@ There is **only one** setting on the Vercel project that points the browser at y
 
 | Where | Variable | Required | Purpose |
 |--------|-----------|----------|--------|
-| **Vercel** → Project → Settings → Environment Variables | `BACKEND_API_ORIGIN` | **Yes** (for this repo’s proxy) | Public FastAPI **origin only** (no `/api` path), e.g. `https://kyc-api.onrender.com`. Implemented by `frontend/api/[...path].js` (requires Root Directory `frontend`). |
-| **Vercel** build (`frontend/vercel.json` → `build.env`) | `VITE_API_BASE_URL` | Default `/api/v1` | Browser calls **same** Vercel host (e.g. `https://project-w8zqj.vercel.app/api/v1/...`). Override in the dashboard if you point the SPA at an external API instead. |
+| **Vercel** → Project → Settings → Environment Variables | `BACKEND_API_ORIGIN` | **Yes** (for this repo’s proxy) | Public FastAPI **origin only** (no `/api` path), e.g. `https://kyc-api.onrender.com`. Implemented by **`api/[...path].js`** at the **repo root** (works when Root Directory is **empty**). |
+| **Vercel** build (root **`vercel.json`** → `build.env`) | `VITE_API_BASE_URL` | Default `/api/v1` | Browser calls **same** Vercel host (e.g. `https://project-w8zqj.vercel.app/api/v1/...`). Override in the dashboard if you point the SPA at an external API instead. |
 | **Backend** `.env` / host env | `CORS_ORIGINS` | **Yes** | Must include your SPA origin, e.g. `https://project-w8zqj.vercel.app` (comma-separated, no spaces, no trailing slash). |
 
 No other `VITE_*` vars in this repo talk to the API. Code reference: `frontend/src/services/api.ts` (`import.meta.env.VITE_API_BASE_URL`).
@@ -265,19 +265,18 @@ No other `VITE_*` vars in this repo talk to the API. Code reference: `frontend/s
 #### Checklist (update after any URL change)
 
 1. **Vercel → Environment Variables:** set **`BACKEND_API_ORIGIN`** to your real API origin (example: `https://my-api.onrender.com`). No path suffix; the proxy appends `/api/v1/...` from the incoming URL.
-2. **Redeploy** after changing `frontend/vercel.json` `build.env` or `BACKEND_API_ORIGIN`.
+2. **Redeploy** after changing root `vercel.json` `build.env` or `BACKEND_API_ORIGIN`.
 3. **Backend:** set `CORS_ORIGINS` to include **`https://project-w8zqj.vercel.app`** (and preview URLs if you use them). Restart the API.
 4. **Network tab:** on [https://project-w8zqj.vercel.app](https://project-w8zqj.vercel.app), requests should hit **`/api/v1/...`** on the same host (proxied), not `localhost`.
 
-#### Root Directory (required)
+#### Root Directory
 
-- Set **Root Directory** to **`frontend`** (Vercel → Settings → General).
-- Config lives in **`frontend/vercel.json`**: `npm ci`, `npm run build`, `outputDirectory: dist`, SPA rewrite, and `build.env.VITE_API_BASE_URL`.
-- The API proxy is **`frontend/api/[...path].js`**. It must sit **next to** the Vite app so Vercel ships **both** `dist/` and `/api/*` in one deployment. A root-level `api/` with `outputDirectory: frontend/dist` often produced **NOT_FOUND** because functions were not bundled with the static output.
+- Leave **Root Directory empty** (repository root). Vercel reads **`vercel.json`** at the repo root: `cd frontend && npm ci --include=dev`, TypeScript + Vite via **`node ./node_modules/...`**, **`outputDirectory`: `frontend/dist`**, SPA rewrite, and **`api/[...path].js`** for `/api/*`.
+- Do **not** set Root Directory to **`frontend`** unless you add your own `frontend/vercel.json` and `frontend/api/` again — the committed layout assumes **monorepo root**.
 
-If the build fails with **`vite: command not found`** / **127**, (1) set **Root Directory** to **`frontend`** so `frontend/vercel.json` applies, (2) use **`npm ci --include=dev`** so `devDependencies` install, (3) in Vercel → **Build & Development**, clear **Build Command** / **Framework** overrides — bare **`vite build`** is not on `PATH`. This repo’s **`buildCommand`** runs **`node ./node_modules/vite/bin/vite.js build`** (no `vite` shim required).
+If the build fails with **`vite: command not found`** / **127**, clear Vercel **Build Command** overrides (bare `vite build` fails). Root `vercel.json` already uses **`node ./node_modules/vite/bin/vite.js build`** after `cd frontend`.
 
-If you see **NOT_FOUND** (`bom1::…`): set Root Directory to **`frontend`**, redeploy from the latest **Production** build, and confirm **`BACKEND_API_ORIGIN`** is set if you rely on the proxy.
+If you see **NOT_FOUND** (`bom1::…`): confirm Root Directory is **empty**, **`BACKEND_API_ORIGIN`** is set, and redeploy **Production**.
 
 **Separate API subdomain (recommended for this repo):**
 
