@@ -269,14 +269,15 @@ No other `VITE_*` vars in this repo talk to the API. Code reference: `frontend/s
 3. **Backend:** set `CORS_ORIGINS` to include **`https://project-w8zqj.vercel.app`** (and preview URLs if you use them). Restart the API.
 4. **Network tab:** on [https://project-w8zqj.vercel.app](https://project-w8zqj.vercel.app), requests should hit **`/api/v1/...`** on the same host (proxied), not `localhost`.
 
-#### Root Directory
+#### Root Directory (required)
 
-- **Repository root** (leave empty / `.`): root `vercel.json` runs `cd frontend && npm ci && npm run build` and publishes `frontend/dist`.
-- **Or** Root Directory = `frontend`: `frontend/vercel.json` sets `npm ci` + `npm run build` and SPA rewrites.
+- Set **Root Directory** to the **repository root** (leave the field **empty** in Vercel — not `frontend`).
+- Reason: the **API proxy** lives in `api/[...path].js` next to root `vercel.json`. If Root Directory is `frontend`, Vercel **never deploys** `api/`, so `/api/*` returns **NOT_FOUND** and the SPA can break.
+- Root `vercel.json` already runs `cd frontend && npm ci && npm run build` and sets `outputDirectory` to `frontend/dist`.
 
-If the build fails with **`vite build` exited with 127**, set **Build Command** to `npm run build`, or use Root Directory `frontend` so `frontend/vercel.json` applies.
+If the build fails with **`vite build` exited with 127**, set **Build & Development → Build Command** to `cd frontend && npm run build` and **Install Command** to `cd frontend && npm ci` (same as `vercel.json`).
 
-If you see Vercel **404 NOT_FOUND** (with a deployment id), the project often used the wrong root (no `dist` output) or deep links lacked an SPA rewrite—use the layout above.
+If you see **NOT_FOUND** (`bom1::…`): confirm Root Directory is **empty**, redeploy, and open the URL from the latest **Production** deployment. SPA rewrites use `/(.*)` → `/index.html`; **serverless `/api/*` is matched before that rewrite**.
 
 **Separate API subdomain (recommended for this repo):**
 
