@@ -271,7 +271,7 @@ No other `VITE_*` vars in this repo talk to the API. Code reference: `frontend/s
 
 #### Root Directory
 
-- Leave **Root Directory empty** (repository root). Vercel reads **`vercel.json`** at the repo root: `cd frontend && npm ci --include=dev`, TypeScript + Vite via **`node ./node_modules/...`**, **`outputDirectory`: `frontend/dist`**, SPA rewrite, and **`api/[...path].js`** for `/api/*`.
+- Leave **Root Directory empty** (repository root). Vercel reads **`vercel.json`** at the repo root: `cd frontend && npm ci --include=dev`, TypeScript + Vite via **`node ./node_modules/...`**, **`outputDirectory`: `frontend/dist`**, SPA rewrite, and **`api/v1/[[...segments]].js`** for **`/api/v1/*`**.
 - Do **not** set Root Directory to **`frontend`** unless you add your own `frontend/vercel.json` and `frontend/api/` again — the committed layout assumes **monorepo root**.
 
 If the build fails with **`vite: command not found`** / **127**, clear Vercel **Build Command** overrides (bare `vite build` fails). Root `vercel.json` already uses **`node ./node_modules/vite/bin/vite.js build`** after `cd frontend`.
