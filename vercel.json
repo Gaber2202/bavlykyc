@@ -1,4 +1,9 @@
 {
+  "build": {
+    "env": {
+      "VITE_API_BASE_URL": "/api/v1"
+    }
+  },
   "installCommand": "cd frontend && npm ci",
   "buildCommand": "cd frontend && npm run build",
   "outputDirectory": "frontend/dist",

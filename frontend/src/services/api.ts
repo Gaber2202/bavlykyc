@@ -1,6 +1,12 @@
 import type { MeResponse, TokenPair } from "@/types/api";
 
-const base = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
+/** Same-origin `/api/v1` on Vercel (proxied to FastAPI); localhost in dev. */
+const rawBase = import.meta.env.VITE_API_BASE_URL?.trim();
+const base = rawBase
+  ? rawBase.replace(/\/$/, "")
+  : import.meta.env.DEV
+    ? "http://localhost:8000/api/v1"
+    : "/api/v1";
 
 let accessToken: string | null = null;
 let refreshToken: string | null = null;
@@ -150,6 +156,13 @@ export class ApiError extends Error {
 export function formatApiErrorMessage(err: unknown): string {
   if (err instanceof ApiError) {
     return detailToString(err.body, err.status);
+  }
+  // Chrome/Edge: fetch network/CORS/mixed-content block
+  if (
+    err instanceof TypeError &&
+    (err.message === "Failed to fetch" || err.message === "Load failed")
+  ) {
+    return "تعذر الاتصال بالواجهة البرمجية. تحقق من VITE_API_BASE_URL (يفترض أن يكون عنواناً عاماً بـ HTTPS)، ومن أن CORS_ORIGINS في الخادم يتضمن نطاق موقعك.";
   }
   if (err instanceof Error) return err.message;
   return "حدث خطأ غير متوقع";

@@ -248,16 +248,33 @@ Configure load balancers / Kubernetes probes: liveness → `/health`, readiness 
 
 ### Vercel (SPA)
 
-This app is a client-side React router SPA. Deploy the static `frontend` build; the API must run elsewhere.
+This app is a client-side React router SPA. Deploy the static `frontend` build; the **FastAPI backend is not on Vercel** — it runs on another host (VPS, Render, Railway, etc.).
 
-1. **Root Directory**
-   - **Repository root** (leave empty / `.`): Vercel uses the root `vercel.json` to run `cd frontend && npm ci && npm run build` and publish `frontend/dist`.
-   - **Or** set Root Directory to `frontend`: Vercel auto-detects Vite; `frontend/vercel.json` adds SPA fallbacks so routes like `/login` are not served as missing static files.
-2. **Environment variables** (Project → Settings): set `VITE_API_BASE_URL` to your live API (e.g. `https://api.example.com/api/v1`).
-3. **CORS**: add your Vercel production URL to backend `CORS_ORIGINS` (see §8).
-4. Redeploy after changing `vercel.json` or env.
+#### What connects to the backend from Vercel?
 
-If the build fails with **`vite build` exited with 127**, Vercel is running the Vite preset’s default command (`vite` not on `PATH`). Either set **Build Command** to `npm run build`, or keep Root Directory `frontend` so `frontend/vercel.json` overrides install/build (uses `npm ci` + `npm run build`).
+There is **only one** setting on the Vercel project that points the browser at your API. Everything else is on the **backend** (`CORS_ORIGINS`, public URL, TLS).
+
+| Where | Variable | Required | Purpose |
+|--------|-----------|----------|--------|
+| **Vercel** → Project → Settings → Environment Variables | `BACKEND_API_ORIGIN` | **Yes** (for this repo’s proxy) | Public FastAPI **origin only** (no `/api` path), e.g. `https://kyc-api.onrender.com`. Used by `api/v1/[...path].js` to forward `/api/v1/*`. |
+| **Vercel** build (see root `vercel.json` → `build.env`) | `VITE_API_BASE_URL` | Default `/api/v1` | Browser calls **same** Vercel host (e.g. `https://project-w8zqj.vercel.app/api/v1/...`). Override in the dashboard if you point the SPA at an external API instead. |
+| **Backend** `.env` / host env | `CORS_ORIGINS` | **Yes** | Must include your SPA origin, e.g. `https://project-w8zqj.vercel.app` (comma-separated, no spaces, no trailing slash). |
+
+No other `VITE_*` vars in this repo talk to the API. Code reference: `frontend/src/services/api.ts` (`import.meta.env.VITE_API_BASE_URL`).
+
+#### Checklist (update after any URL change)
+
+1. **Vercel → Environment Variables:** set **`BACKEND_API_ORIGIN`** to your real API origin (example: `https://my-api.onrender.com`). No path suffix; the proxy appends `/api/v1/...` from the incoming URL.
+2. **Redeploy** after changing `vercel.json` `build.env` or `BACKEND_API_ORIGIN`.
+3. **Backend:** set `CORS_ORIGINS` to include **`https://project-w8zqj.vercel.app`** (and preview URLs if you use them). Restart the API.
+4. **Network tab:** on [https://project-w8zqj.vercel.app](https://project-w8zqj.vercel.app), requests should hit **`/api/v1/...`** on the same host (proxied), not `localhost`.
+
+#### Root Directory
+
+- **Repository root** (leave empty / `.`): root `vercel.json` runs `cd frontend && npm ci && npm run build` and publishes `frontend/dist`.
+- **Or** Root Directory = `frontend`: `frontend/vercel.json` sets `npm ci` + `npm run build` and SPA rewrites.
+
+If the build fails with **`vite build` exited with 127**, set **Build Command** to `npm run build`, or use Root Directory `frontend` so `frontend/vercel.json` applies.
 
 If you see Vercel **404 NOT_FOUND** (with a deployment id), the project often used the wrong root (no `dist` output) or deep links lacked an SPA rewrite—use the layout above.
 
