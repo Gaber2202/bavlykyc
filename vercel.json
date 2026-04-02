@@ -2,8 +2,8 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "cd frontend && npm ci --include=dev",
-  "buildCommand": "cd frontend && node ./node_modules/typescript/bin/tsc -b && node ./node_modules/vite/bin/vite.js build",
-  "outputDirectory": "frontend/dist",
+  "buildCommand": "cd frontend && node ./node_modules/typescript/bin/tsc -b && node ./node_modules/vite/bin/vite.js build && cd .. && rm -rf public && mkdir -p public && cp -r frontend/dist/. public/",
+  "outputDirectory": "public",
   "build": {
     "env": {
       "VITE_API_BASE_URL": "/api/v1"

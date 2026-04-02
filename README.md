@@ -271,7 +271,7 @@ No other `VITE_*` vars in this repo talk to the API. Code reference: `frontend/s
 
 #### Root Directory
 
-- Leave **Root Directory empty** (repository root). Vercel reads **`vercel.json`**: `cd frontend` install/build, **`outputDirectory`: `frontend/dist`**, **`{ "handle": "filesystem" }`** then SPA fallback, and **`api/v1/[...slug].js`** for **`/api/v1/*`**. Without **filesystem** first, **POST /api/v1/...** can hit **`index.html`** → **405**.
+- Leave **Root Directory empty** (repository root). Build copies **`frontend/dist` → `public/`** so static output sits next to **`api/`** (using only `frontend/dist` as `outputDirectory` can drop serverless routes and cause **POST → 405**). **`{ "handle": "filesystem" }`** then SPA rewrite; proxy: **`api/v1/[...slug].js`**.
 - Do **not** set Root Directory to **`frontend`** unless you add your own `frontend/vercel.json` and `frontend/api/` again — the committed layout assumes **monorepo root**.
 
 If the build fails with **`vite: command not found`** / **127**, clear Vercel **Build Command** overrides (bare `vite build` fails). Root `vercel.json` already uses **`node ./node_modules/vite/bin/vite.js build`** after `cd frontend`.
