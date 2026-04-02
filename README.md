@@ -246,6 +246,19 @@ Configure load balancers / Kubernetes probes: liveness → `/health`, readiness 
 - Example nginx layout: `deploy/nginx.reverse-proxy.example.conf`.
 - Production Compose pattern (API + static web): `deploy/docker-compose.prod.example.yml` (adapt env + remove healthcheck if you change images).
 
+### Vercel (SPA)
+
+This app is a client-side React router SPA. Deploy the static `frontend` build; the API must run elsewhere.
+
+1. **Root Directory**
+   - **Repository root** (leave empty / `.`): Vercel uses the root `vercel.json` to run `cd frontend && npm ci && npm run build` and publish `frontend/dist`.
+   - **Or** set Root Directory to `frontend`: Vercel auto-detects Vite; `frontend/vercel.json` adds SPA fallbacks so routes like `/login` are not served as missing static files.
+2. **Environment variables** (Project → Settings): set `VITE_API_BASE_URL` to your live API (e.g. `https://api.example.com/api/v1`).
+3. **CORS**: add your Vercel production URL to backend `CORS_ORIGINS` (see §8).
+4. Redeploy after changing `vercel.json` or env.
+
+If you see Vercel **404 NOT_FOUND** (with a deployment id), the project often used the wrong root (no `dist` output) or deep links lacked an SPA rewrite—use the layout above.
+
 **Separate API subdomain (recommended for this repo):**
 
 - SPA at `https://kyc.example.com` (static or small nginx container, e.g. frontend image on port 8080).
