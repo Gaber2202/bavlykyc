@@ -1,7 +1,6 @@
 /**
- * Proxies /api/v1/* to the real FastAPI host.
- * Set BACKEND_API_ORIGIN on Vercel (e.g. https://your-api.onrender.com) — no path suffix.
- * The browser calls same-origin https://project-w8zqj.vercel.app/api/v1/... (see vercel.json build.env).
+ * Proxies /api/* (including /api/v1/...) to FastAPI at BACKEND_API_ORIGIN.
+ * Lives at api/[...path].js so Vercel matches before the SPA rewrite (avoids POST→index.html → 405).
  */
 
 export default async function handler(req, res) {
@@ -18,7 +17,15 @@ export default async function handler(req, res) {
   const target = `${backend}${pathAndQuery}`;
 
   const headers = new Headers();
-  const copy = ["content-type", "authorization", "accept", "origin", "user-agent"];
+  const copy = [
+    "content-type",
+    "authorization",
+    "accept",
+    "origin",
+    "user-agent",
+    "access-control-request-method",
+    "access-control-request-headers",
+  ];
   for (const name of copy) {
     const v = req.headers[name];
     if (v) headers.set(name, Array.isArray(v) ? v[0] : v);
@@ -31,7 +38,7 @@ export default async function handler(req, res) {
     redirect: "manual",
   };
 
-  if (req.method !== "GET" && req.method !== "HEAD") {
+  if (req.method !== "GET" && req.method !== "HEAD" && req.method !== "OPTIONS") {
     if (typeof req.body === "string") {
       init.body = req.body;
     } else if (Buffer.isBuffer(req.body)) {
