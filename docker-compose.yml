@@ -1,0 +1,68 @@
+# Local development: PostgreSQL + API + Vite.
+# Postgres: default superuser postgres/postgres, database bavly_kyc (matches local norm).
+#
+# Copy backend/.env.example -> backend/.env and set SECRET_KEY (≥32 chars).
+#
+# Start:  docker compose up --build
+# DB only: docker compose up -d db
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: bavly_kyc
+    ports:
+      - "5432:5432"
+    volumes:
+      - kyc_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d bavly_kyc"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+      --reload-dir /app/app
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/bavly_kyc
+      DATABASE_URL_SYNC: postgresql+psycopg://postgres:postgres@db:5432/bavly_kyc
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/alembic:/app/alembic
+      - ./backend/scripts:/app/scripts
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    image: node:22-alpine
+    working_dir: /app
+    command: sh -c "npm ci && npm run dev -- --host 0.0.0.0 --port 5173"
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000/api/v1
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    depends_on:
+      - api
+
+volumes:
+  kyc_pgdata:
+  frontend_node_modules:

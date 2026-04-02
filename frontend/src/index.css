@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(ellipse at top, #1a1408 0%, #0a0a0a 55%);
+}
+
+.gold-border {
+  @apply border border-gold-400/40 shadow-[0_0_40px_-12px_rgba(212,175,55,0.55)];
+}
+
+.glass-panel {
+  @apply bg-ink-50/80 backdrop-blur-md gold-border rounded-xl;
+}
+
+.input-field {
+  @apply w-full rounded-lg bg-ink border border-gold-600/30 px-3 py-2 text-gold-100
+    placeholder:text-gold-600/80 focus:border-gold-400 focus:outline-none focus:ring-1
+    focus:ring-gold-400/50 transition;
+}
+
+.btn-primary {
+  @apply inline-flex items-center justify-center rounded-lg bg-gradient-to-l from-gold-600 to-gold-400
+    px-4 py-2 text-ink font-semibold shadow-lg shadow-gold-900/40 hover:opacity-95
+    disabled:opacity-50 transition;
+}
+
+.btn-ghost {
+  @apply rounded-lg border border-gold-600/40 px-3 py-2 text-gold-200 hover:bg-gold-900/20 transition;
+}
