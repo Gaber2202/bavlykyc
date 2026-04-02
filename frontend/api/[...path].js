@@ -1,6 +1,7 @@
 /**
  * Proxies /api/* (including /api/v1/...) to FastAPI at BACKEND_API_ORIGIN.
- * Lives at api/[...path].js so Vercel matches before the SPA rewrite (avoids POST→index.html → 405).
+ * Must live under frontend/api/ when Vercel "Root Directory" is `frontend` so
+ * functions ship with the same deployment as `dist/`.
  */
 
 export default async function handler(req, res) {

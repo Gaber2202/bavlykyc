@@ -256,8 +256,8 @@ There is **only one** setting on the Vercel project that points the browser at y
 
 | Where | Variable | Required | Purpose |
 |--------|-----------|----------|--------|
-| **Vercel** → Project → Settings → Environment Variables | `BACKEND_API_ORIGIN` | **Yes** (for this repo’s proxy) | Public FastAPI **origin only** (no `/api` path), e.g. `https://kyc-api.onrender.com`. Used by `api/[...path].js` to forward `/api/*` (e.g. `/api/v1/...`). |
-| **Vercel** build (see root `vercel.json` → `build.env`) | `VITE_API_BASE_URL` | Default `/api/v1` | Browser calls **same** Vercel host (e.g. `https://project-w8zqj.vercel.app/api/v1/...`). Override in the dashboard if you point the SPA at an external API instead. |
+| **Vercel** → Project → Settings → Environment Variables | `BACKEND_API_ORIGIN` | **Yes** (for this repo’s proxy) | Public FastAPI **origin only** (no `/api` path), e.g. `https://kyc-api.onrender.com`. Implemented by `frontend/api/[...path].js` (requires Root Directory `frontend`). |
+| **Vercel** build (`frontend/vercel.json` → `build.env`) | `VITE_API_BASE_URL` | Default `/api/v1` | Browser calls **same** Vercel host (e.g. `https://project-w8zqj.vercel.app/api/v1/...`). Override in the dashboard if you point the SPA at an external API instead. |
 | **Backend** `.env` / host env | `CORS_ORIGINS` | **Yes** | Must include your SPA origin, e.g. `https://project-w8zqj.vercel.app` (comma-separated, no spaces, no trailing slash). |
 
 No other `VITE_*` vars in this repo talk to the API. Code reference: `frontend/src/services/api.ts` (`import.meta.env.VITE_API_BASE_URL`).
@@ -265,19 +265,19 @@ No other `VITE_*` vars in this repo talk to the API. Code reference: `frontend/s
 #### Checklist (update after any URL change)
 
 1. **Vercel → Environment Variables:** set **`BACKEND_API_ORIGIN`** to your real API origin (example: `https://my-api.onrender.com`). No path suffix; the proxy appends `/api/v1/...` from the incoming URL.
-2. **Redeploy** after changing `vercel.json` `build.env` or `BACKEND_API_ORIGIN`.
+2. **Redeploy** after changing `frontend/vercel.json` `build.env` or `BACKEND_API_ORIGIN`.
 3. **Backend:** set `CORS_ORIGINS` to include **`https://project-w8zqj.vercel.app`** (and preview URLs if you use them). Restart the API.
 4. **Network tab:** on [https://project-w8zqj.vercel.app](https://project-w8zqj.vercel.app), requests should hit **`/api/v1/...`** on the same host (proxied), not `localhost`.
 
 #### Root Directory (required)
 
-- Set **Root Directory** to the **repository root** (leave the field **empty** in Vercel — not `frontend`).
-- Reason: the **API proxy** lives in `api/[...path].js` next to root `vercel.json`. If Root Directory is `frontend`, Vercel **never deploys** `api/`, so `/api/*` returns **NOT_FOUND** and the SPA can break.
-- Root `vercel.json` already runs `cd frontend && npm ci && npm run build` and sets `outputDirectory` to `frontend/dist`.
+- Set **Root Directory** to **`frontend`** (Vercel → Settings → General).
+- Config lives in **`frontend/vercel.json`**: `npm ci`, `npm run build`, `outputDirectory: dist`, SPA rewrite, and `build.env.VITE_API_BASE_URL`.
+- The API proxy is **`frontend/api/[...path].js`**. It must sit **next to** the Vite app so Vercel ships **both** `dist/` and `/api/*` in one deployment. A root-level `api/` with `outputDirectory: frontend/dist` often produced **NOT_FOUND** because functions were not bundled with the static output.
 
-If the build fails with **`vite build` exited with 127**, set **Build & Development → Build Command** to `cd frontend && npm run build` and **Install Command** to `cd frontend && npm ci` (same as `vercel.json`).
+If the build fails with **`vite build` exited with 127**, `frontend/vercel.json` sets `"framework": null` and **`npm run build`** so `vite` runs from `node_modules/.bin`.
 
-If you see **NOT_FOUND** (`bom1::…`): confirm Root Directory is **empty**, redeploy, and open the URL from the latest **Production** deployment. SPA rewrites use `/(.*)` → `/index.html`; **serverless `/api/*` is matched before that rewrite**.
+If you see **NOT_FOUND** (`bom1::…`): set Root Directory to **`frontend`**, redeploy from the latest **Production** build, and confirm **`BACKEND_API_ORIGIN`** is set if you rely on the proxy.
 
 **Separate API subdomain (recommended for this repo):**
 
