@@ -256,7 +256,7 @@ There is **only one** setting on the Vercel project that points the browser at y
 
 | Where | Variable | Required | Purpose |
 |--------|-----------|----------|--------|
-| **Vercel** → Project → Settings → Environment Variables | `BACKEND_API_ORIGIN` | **Yes** (for this repo’s proxy) | Public FastAPI **origin only** (no `/api` path), e.g. `https://kyc-api.onrender.com`. Implemented by **`api/[...path].js`** at the **repo root** (works when Root Directory is **empty**). |
+| **Vercel** → Project → Settings → Environment Variables | `BACKEND_API_ORIGIN` | **Yes** (for this repo’s proxy) | Public FastAPI **origin only** (no `/api` path), e.g. `https://kyc-api.onrender.com`. Implemented by **`api/v1/[[...segments]].js`** at the **repo root** (matches `/api/v1/*` when Root Directory is **empty**). |
 | **Vercel** build (root **`vercel.json`** → `build.env`) | `VITE_API_BASE_URL` | Default `/api/v1` | Browser calls **same** Vercel host (e.g. `https://project-w8zqj.vercel.app/api/v1/...`). Override in the dashboard if you point the SPA at an external API instead. |
 | **Backend** `.env` / host env | `CORS_ORIGINS` | **Yes** | Must include your SPA origin, e.g. `https://project-w8zqj.vercel.app` (comma-separated, no spaces, no trailing slash). |
 
