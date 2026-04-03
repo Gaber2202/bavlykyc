@@ -339,6 +339,25 @@ This repo is wired for a **single public IP** with **path-based routing**: the b
 
 **Security:** The IP and `root` SSH user are documented here for your ops runbook. Use **SSH keys**, disable password login, and restrict **port 22** (e.g. allowlist your IP). Add **HTTPS + a real domain** when DNS is ready (`deploy/nginx.reverse-proxy.example.conf` + certbot).
 
+### 14.0 Complete installation checklist (do in order)
+
+Use this if anything was skipped or the stack is half-installed.
+
+| Step | What | Done? |
+|------|------|-------|
+| 1 | **Docker Engine + Compose plugin** installed and `docker compose version` works ([Ubuntu install](https://docs.docker.com/engine/install/ubuntu/)). | ☐ |
+| 2 | **git**, **nginx**, **curl** on the host: `sudo apt update && sudo apt install -y git nginx curl` | ☐ |
+| 3 | **Firewall:** §14.1 (`ufw` allows SSH, 80, 443). | ☐ |
+| 4 | Repo at **`/opt/BavlyKYC`** (`git clone` §14.2) and **`git pull`** for latest. | ☐ |
+| 5 | **`/opt/BavlyKYC/deploy/.env`** exists (copy from `vps.bavlykyc.env.example`); includes **`SECRET_KEY`** (≥32 chars), **`DATABASE_URL`** / **`DATABASE_URL_SYNC`**, **`POSTGRES_PASSWORD`**, **`CORS_ORIGINS`**, **`VITE_API_BASE_URL`**. | ☐ |
+| 6 | **Host nginx** §14.3 — site enabled, `default` removed, `sudo nginx -t` OK, `systemctl reload nginx`. | ☐ |
+| 7 | **Containers:** from `deploy/`, `docker compose -f docker-compose.vps.example.yml --env-file .env up -d --build` — `docker compose ... ps` shows **db**, **api**, **web** **running**. | ☐ |
+| 8 | **Migrations** (once per empty DB): §14.4 `alembic upgrade head`. | ☐ |
+| 9 | **Admin seed** (once): §14.4 `seed_admin.py`. | ☐ |
+| 10 | **Verify** §14.5: `curl` health URLs + browser login. If `api` is not up, §14.7. | ☐ |
+
+**You are not done until steps 7–10 pass.** Common gaps: nginx not installed, `.env` only partially filled, migrations/seed skipped, or Postgres volume password mismatch (§14.7).
+
 ### 14.1 SSH and firewall (on the VPS)
 
 ```bash
