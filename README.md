@@ -462,6 +462,35 @@ docker compose -f docker-compose.vps.example.yml --env-file .env run --rm --no-d
   sh -c 'gunicorn app.main:app -k uvicorn.workers.UvicornWorker -w 1 -b 0.0.0.0:8000 --access-logfile - --error-logfile -'
 ```
 
+### 14.8 UI updates not showing on the VPS
+
+Usually the server is fine but the **browser** keeps an old **`index.html`**, so it still requests **old hashed JS/CSS** files. The frontend image now sends **`Cache-Control: no-cache`** for the SPA shell; rebuild **web** so that applies.
+
+**On the VPS — force a fresh image and restart:**
+
+```bash
+cd /opt/BavlyKYC
+git pull origin main
+cd deploy
+docker compose -f docker-compose.vps.example.yml --env-file .env build --no-cache web
+docker compose -f docker-compose.vps.example.yml --env-file .env up -d --force-recreate web
+# If backend changed too:
+docker compose -f docker-compose.vps.example.yml --env-file .env build --no-cache api
+docker compose -f docker-compose.vps.example.yml --env-file .env up -d --force-recreate api
+```
+
+**Verify the new bundle is live** (filename changes after each Vite build):
+
+```bash
+docker compose -f docker-compose.vps.example.yml --env-file .env exec web \
+  sh -c 'grep -o "assets/index-[^\"]*\\.js" /usr/share/nginx/html/index.html | head -1'
+curl -sS http://127.0.0.1:8080/ | grep -o 'assets/index-[^"]*\.js' | head -1
+```
+
+**In the browser:** hard refresh (**Ctrl+Shift+R** / **Cmd+Shift+R**) or open the site in a **private window**.
+
+**Still old?** Confirm `git log -1` on the VPS matches GitHub, and that you are not editing a **different clone path** than the one Compose builds (`../frontend` relative to `deploy/`).
+
 ---
 
 ## Security (summary)
