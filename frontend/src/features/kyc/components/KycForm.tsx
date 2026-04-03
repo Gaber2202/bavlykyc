@@ -17,11 +17,18 @@ interface Props {
 }
 
 export function KycForm({ defaultValues, submitLabel, onSubmit, disabled }: Props) {
-  const isAdmin = useAuthStore((s) => s.user?.role === "admin");
+  const user = useAuthStore((s) => s.user);
+  const isAdmin = user?.role === "admin";
+  const lockedEmployeeName = user?.full_name?.trim() || user?.username?.trim() || "";
+
   const form = useForm<KycFormValues>({
     resolver: zodResolver(kycFormSchema) as Resolver<KycFormValues>,
     defaultValues: { ...defaultKycValues, ...defaultValues } as KycFormValues,
   });
+
+  useEffect(() => {
+    form.setValue("employee_name", lockedEmployeeName, { shouldValidate: true });
+  }, [lockedEmployeeName, form]);
 
   const hbs = form.watch("has_bank_statement");
   const marital = form.watch("marital_status");
@@ -81,7 +88,13 @@ export function KycForm({ defaultValues, submitLabel, onSubmit, disabled }: Prop
         <SectionTitle n={1} title="البيانات الأساسية" />
         <div className="grid md:grid-cols-2 gap-4">
           <Field label="اسم الموظف" error={form.formState.errors.employee_name}>
-            <input className="input-field" {...form.register("employee_name")} />
+            <input
+              type="text"
+              readOnly
+              title="يُعبأ تلقائياً من اسم المستخدم المسجّل"
+              className="input-field cursor-default bg-ink/50 text-gold-200/90"
+              {...form.register("employee_name")}
+            />
           </Field>
           <Field label="اسم العميل الكامل" error={form.formState.errors.client_full_name}>
             <input className="input-field" {...form.register("client_full_name")} />
