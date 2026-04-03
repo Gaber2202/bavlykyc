@@ -22,7 +22,7 @@ async def list_kyc_ep(
     db_session: SessionDep,
     current: CurrentUser,
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int = Query(20, ge=1, le=500),
     search: str | None = Query(
         None, description="بحث عام في اسم العميل والهاتف والبريد والموظف"
     ),

@@ -1,3 +1,9 @@
+import { fetchAllKycForExport, downloadKycExcel } from "@/features/kyc/utils/kycExcelExport";
+import {
+  buildKycListQueryParams,
+  isKycListSortField,
+  type KycListSortField,
+} from "@/features/kyc/utils/kycListQuery";
 import { apiFetch, formatApiErrorMessage } from "@/services/api";
 import { useAuthStore } from "@/stores/authStore";
 import type { AdminUserRow, KYCRecordDto, PaginatedResponse } from "@/types/api";
@@ -14,21 +20,6 @@ import { toast } from "sonner";
 
 const col = createColumnHelper<KYCRecordDto>();
 
-const SORT_FIELDS = [
-  "created_at",
-  "status",
-  "service_type",
-  "client_full_name",
-  "employee_name",
-  "assigned_to",
-  "age",
-] as const;
-type SortField = (typeof SORT_FIELDS)[number];
-
-function isSortField(s: string): s is SortField {
-  return (SORT_FIELDS as readonly string[]).includes(s);
-}
-
 export function KycListPage() {
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "admin";
@@ -44,8 +35,9 @@ export function KycListPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [includeDeleted, setIncludeDeleted] = useState(false);
-  const [sortBy, setSortBy] = useState<SortField>("created_at");
+  const [sortBy, setSortBy] = useState<KycListSortField>("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [exporting, setExporting] = useState(false);
 
   const usersQuery = useQuery({
     queryKey: ["users-kyc-filter"],
@@ -73,21 +65,24 @@ export function KycListPage() {
       sortOrder,
     ],
     queryFn: () => {
-      const q = new URLSearchParams({
-        page: String(page),
-        page_size: String(pageSize),
-        sort_by: sortBy,
-        sort_order: sortOrder,
-      });
-      if (search.trim()) q.set("search", search.trim());
-      if (clientName.trim()) q.set("client_name", clientName.trim());
-      if (phone.trim()) q.set("phone", phone.trim());
-      if (serviceType) q.set("service_type", serviceType);
-      if (status) q.set("status", status);
-      if (isAdmin && createdById) q.set("created_by_id", createdById);
-      if (dateFrom) q.set("date_from", `${dateFrom}T00:00:00.000Z`);
-      if (dateTo) q.set("date_to", `${dateTo}T23:59:59.999Z`);
-      if (isAdmin && includeDeleted) q.set("include_deleted", "true");
+      const q = buildKycListQueryParams(
+        {
+          search,
+          clientName,
+          phone,
+          serviceType,
+          status,
+          createdById,
+          dateFrom,
+          dateTo,
+          includeDeleted,
+          sortBy,
+          sortOrder,
+          isAdmin,
+        },
+        page,
+        pageSize,
+      );
       return apiFetch<PaginatedResponse<KYCRecordDto>>(`/kyc?${q.toString()}`);
     },
   });
@@ -98,7 +93,38 @@ export function KycListPage() {
     }
   }, [query.isError, query.error]);
 
-  function toggleSort(field: SortField) {
+  async function handleExportExcel() {
+    const total = query.data?.meta.total ?? 0;
+    if (total === 0) {
+      toast.error("لا توجد سجلات للتصدير");
+      return;
+    }
+    setExporting(true);
+    try {
+      const rows = await fetchAllKycForExport(apiFetch, {
+        search,
+        clientName,
+        phone,
+        serviceType,
+        status,
+        createdById,
+        dateFrom,
+        dateTo,
+        includeDeleted,
+        sortBy,
+        sortOrder,
+        isAdmin,
+      });
+      await downloadKycExcel(rows);
+      toast.success(`تم تصدير ${rows.length} سجلًا إلى Excel`);
+    } catch (e) {
+      toast.error(formatApiErrorMessage(e));
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  function toggleSort(field: KycListSortField) {
     if (sortBy === field) {
       setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
     } else {
@@ -157,9 +183,24 @@ export function KycListPage() {
           <h1 className="text-2xl font-bold text-gold-200 tracking-tight">سجلات KYC</h1>
           <p className="text-sm text-gold-500 mt-1">إدارة الاعرف عميلك — واجهة عربية كاملة</p>
         </div>
-        <Link to="/kyc/new" className="btn-primary text-sm shadow-lg shadow-gold-900/30">
-          + إضافة سجل
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="btn-ghost text-sm border border-gold-700/50"
+            disabled={
+              exporting ||
+              query.isLoading ||
+              query.isFetching ||
+              (query.data?.meta.total ?? 0) === 0
+            }
+            onClick={() => void handleExportExcel()}
+          >
+            {exporting ? "جاري التصدير…" : "تصدير Excel"}
+          </button>
+          <Link to="/kyc/new" className="btn-primary text-sm shadow-lg shadow-gold-900/30">
+            + إضافة سجل
+          </Link>
+        </div>
       </div>
 
       <div className="glass-panel p-5 space-y-4 border-gold-500/20">
@@ -307,7 +348,7 @@ export function KycListPage() {
                 <tr key={hg.id} className="border-b border-gold-800/50 text-gold-400 bg-ink/40">
                   {hg.headers.map((h) => {
                     const colId = h.column.id;
-                    const s = isSortField(colId) ? colId : null;
+                    const s = isKycListSortField(colId) ? colId : null;
                     return (
                       <th key={h.id} className="text-right px-3 py-3 font-semibold">
                         {s ? (
