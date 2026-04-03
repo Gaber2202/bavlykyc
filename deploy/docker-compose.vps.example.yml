@@ -1,0 +1,72 @@
+# Production-style stack for Hostinger VPS (IP 187.127.142.186).
+# Run from repo deploy/ directory so build contexts resolve:
+#
+#   cd /opt/BavlyKYC/deploy
+#   cp vps.bavlykyc.env.example .env
+#   # edit .env — SECRET_KEY, POSTGRES_PASSWORD, DATABASE_* URLs must match
+#   docker compose -f docker-compose.vps.example.yml --env-file .env up -d --build
+#
+# First-time DB schema (once per fresh DB):
+#   docker compose -f docker-compose.vps.example.yml --env-file .env run --rm api sh -c 'cd /app && alembic upgrade head'
+#
+# Host nginx: use nginx.vps-ip-path.example.conf so :80 proxies to 127.0.0.1:8000 and :8080.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: bavly_kyc
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - kyc_pgdata_vps:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d bavly_kyc"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  api:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DEBUG: "false"
+      EXPOSE_DOCS: "false"
+      JWT_ALGORITHM: HS256
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready')\"",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
+  web:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:?set VITE_API_BASE_URL in .env}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+
+volumes:
+  kyc_pgdata_vps:

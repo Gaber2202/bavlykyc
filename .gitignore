@@ -4,6 +4,7 @@ frontend/node_modules/
 frontend/dist/
 public/
 frontend/.env
+deploy/.env
 *.pyc
 __pycache__/
 .pytest_cache/

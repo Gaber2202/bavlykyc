@@ -333,6 +333,92 @@ npm run build
 
 ---
 
+## 14. Production VPS (Hostinger — `187.127.142.186`)
+
+This repo is wired for a **single public IP** with **path-based routing**: the browser loads the SPA at `http://187.127.142.186` and calls the API at `http://187.127.142.186/api/v1` (host nginx proxies to containers bound on localhost).
+
+**Security:** The IP and `root` SSH user are documented here for your ops runbook. Use **SSH keys**, disable password login, and restrict **port 22** (e.g. allowlist your IP). Add **HTTPS + a real domain** when DNS is ready (`deploy/nginx.reverse-proxy.example.conf` + certbot).
+
+### 14.1 SSH and firewall (on the VPS)
+
+```bash
+ssh root@187.127.142.186
+sudo ufw allow OpenSSH
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw enable
+```
+
+Install Docker + Compose plugin, git, and nginx (see [Docker Engine on Ubuntu](https://docs.docker.com/engine/install/ubuntu/)).
+
+### 14.2 Clone and configure
+
+```bash
+sudo mkdir -p /opt && sudo chown "$USER:$USER" /opt
+cd /opt
+git clone https://github.com/Gaber2202/bavlykyc.git BavlyKYC
+cd BavlyKYC/deploy
+cp vps.bavlykyc.env.example .env
+nano .env   # set SECRET_KEY (openssl rand -hex 32), POSTGRES_PASSWORD, matching DATABASE_* URLs
+```
+
+### 14.3 Host nginx (port 80 → API + SPA)
+
+```bash
+sudo cp /opt/BavlyKYC/deploy/nginx.vps-ip-path.example.conf /etc/nginx/sites-available/bavlykyc
+sudo ln -sf /etc/nginx/sites-available/bavlykyc /etc/nginx/sites-enabled/bavlykyc
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+### 14.4 Start Postgres + API + web (Docker)
+
+```bash
+cd /opt/BavlyKYC/deploy
+docker compose -f docker-compose.vps.example.yml --env-file .env up -d --build
+```
+
+**First-time schema** (once per empty database):
+
+```bash
+cd /opt/BavlyKYC/deploy
+docker compose -f docker-compose.vps.example.yml --env-file .env run --rm api sh -c 'cd /app && alembic upgrade head'
+```
+
+**Seed admin** (once):
+
+```bash
+docker compose -f docker-compose.vps.example.yml --env-file .env exec api \
+  sh -c 'cd /app && ADMIN_USERNAME=admin ADMIN_PASSWORD="YourStrongPassword" PYTHONPATH=/app python scripts/seed_admin.py'
+```
+
+### 14.5 Verify
+
+```bash
+curl -sS http://187.127.142.186/health
+curl -sS http://187.127.142.186/health/ready
+```
+
+Open `http://187.127.142.186` in a browser and sign in. If the UI cannot reach the API, confirm `CORS_ORIGINS` and `VITE_API_BASE_URL` in `deploy/.env` match **`http://187.127.142.186`** (no trailing slash) and rebuild: `docker compose ... up -d --build`.
+
+### 14.6 Deploy updates from your laptop (optional)
+
+```bash
+cd /path/to/BavlyKYC
+chmod +x scripts/sync-to-vps.example.sh
+./scripts/sync-to-vps.example.sh
+ssh root@187.127.142.186 'cd /opt/BavlyKYC/deploy && docker compose -f docker-compose.vps.example.yml --env-file .env up -d --build'
+```
+
+| File | Role |
+|------|------|
+| `deploy/vps.bavlykyc.env.example` | Copy to `deploy/.env` on the server |
+| `deploy/docker-compose.vps.example.yml` | `db` + `api` + `web` (API/web on `127.0.0.1` only) |
+| `deploy/nginx.vps-ip-path.example.conf` | Host nginx for `187.127.142.186` |
+| `scripts/sync-to-vps.example.sh` | `rsync` to `root@187.127.142.186:/opt/BavlyKYC` |
+
+---
+
 ## Security (summary)
 
 - Strong `SECRET_KEY`, `DEBUG=false`, narrow `CORS_ORIGINS`, TLS at the edge.
@@ -367,11 +453,15 @@ frontend/
 
 deploy/
   nginx.reverse-proxy.example.conf
+  nginx.vps-ip-path.example.conf   # HTTP + path routing for 187.127.142.186
   docker-compose.prod.example.yml
+  docker-compose.vps.example.yml   # db + api + web for Hostinger VPS
+  vps.bavlykyc.env.example         # env template for that VPS
 
 docker-compose.yml     # local dev (db + api + vite)
 scripts/start-local-db.sh     # start db only + wait for ready
 scripts/apply_db_schema.sh    # alembic upgrade head (local Postgres)
+scripts/sync-to-vps.example.sh  # rsync to root@187.127.142.186:/opt/BavlyKYC
 scripts/create_database.sql   # one-time CREATE USER / CREATE DATABASE
 scripts/psql-connect.sh       # open psql using backend/.env DATABASE_URL
 ```
