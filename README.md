@@ -417,6 +417,32 @@ ssh root@187.127.142.186 'cd /opt/BavlyKYC/deploy && docker compose -f docker-co
 | `deploy/nginx.vps-ip-path.example.conf` | Host nginx for `187.127.142.186` |
 | `scripts/sync-to-vps.example.sh` | `rsync` to `root@187.127.142.186:/opt/BavlyKYC` |
 
+### 14.7 Troubleshooting: `api` not running
+
+Run **from** `/opt/BavlyKYC/deploy` (so `deploy/.env` and paths resolve):
+
+```bash
+cd /opt/BavlyKYC/deploy
+docker compose -f docker-compose.vps.example.yml --env-file .env ps -a
+docker compose -f docker-compose.vps.example.yml --env-file .env logs db --tail 80
+docker compose -f docker-compose.vps.example.yml --env-file .env logs api --tail 120
+```
+
+| Symptom | Likely cause |
+|--------|----------------|
+| `api` **Created** but not **Up**; `db` not healthy | DB failing (see `logs db`). Often a **volume** was initialized with a **different** `POSTGRES_PASSWORD` — fix: `docker compose ... down`, remove volume `kyc_pgdata_vps` (wipes DB), `up` again, re-run migrations + seed. |
+| `api` **Exited** with pydantic / `ValidationError` | Missing or invalid `SECRET_KEY` (min 32 chars), `DATABASE_URL`, or `CORS_ORIGINS` in `deploy/.env`. |
+| `api` **Restarting**; logs show OOM or worker boot errors | Small VPS: set `WEB_CONCURRENCY=1` in `deploy/.env` and `up -d --build` again. |
+| Compose error `set SECRET_KEY in deploy/.env` | Run with `--env-file .env` from `deploy/`, or ensure those variables exist in `.env` (no typos). |
+
+**One-off API foreground run** (see the crash without restart loop):
+
+```bash
+cd /opt/BavlyKYC/deploy
+docker compose -f docker-compose.vps.example.yml --env-file .env run --rm --no-deps --service-ports api \
+  sh -c 'gunicorn app.main:app -k uvicorn.workers.UvicornWorker -w 1 -b 0.0.0.0:8000 --access-logfile - --error-logfile -'
+```
+
 ---
 
 ## Security (summary)

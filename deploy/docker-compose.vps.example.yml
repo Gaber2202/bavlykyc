@@ -38,6 +38,10 @@ services:
     env_file:
       - .env
     environment:
+      # Interpolated from the same `.env` Compose loads (run from `deploy/`).
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in deploy/.env}
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in deploy/.env}
+      CORS_ORIGINS: ${CORS_ORIGINS:?set CORS_ORIGINS in deploy/.env}
       DEBUG: "false"
       EXPOSE_DOCS: "false"
       JWT_ALGORITHM: HS256
@@ -55,8 +59,8 @@ services:
         ]
       interval: 30s
       timeout: 5s
-      retries: 3
-      start_period: 40s
+      retries: 5
+      start_period: 90s
 
   web:
     build:
