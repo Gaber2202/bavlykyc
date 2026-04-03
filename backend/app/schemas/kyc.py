@@ -160,7 +160,7 @@ class KYCRead(APIModel):
 
 class KYCListQuery(StrictInputModel):
     page: int = Field(1, ge=1)
-    page_size: int = Field(20, ge=1, le=100)
+    page_size: int = Field(20, ge=1, le=500)
     search: str | None = Field(None, max_length=200)
     service_type: str | None = None
     status: str | None = None
