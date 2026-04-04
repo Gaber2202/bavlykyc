@@ -157,12 +157,22 @@ export function formatApiErrorMessage(err: unknown): string {
   if (err instanceof ApiError) {
     return detailToString(err.body, err.status);
   }
-  // Chrome/Edge: fetch network/CORS/mixed-content block
+  // Chrome/Edge/Safari: network failure, CORS block, mixed content (https page → http API), DNS, API down
   if (
     err instanceof TypeError &&
     (err.message === "Failed to fetch" || err.message === "Load failed")
   ) {
-    return "تعذر الاتصال بالواجهة البرمجية. تحقق من VITE_API_BASE_URL (يفترض أن يكون عنواناً عاماً بـ HTTPS)، ومن أن CORS_ORIGINS في الخادم يتضمن نطاق موقعك.";
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.warn("[KYC API] فشل الطلب. العنوان المستخدم:", base);
+    }
+    return [
+      "تعذر الاتصال بالخادم (الشبكة أو سياسة المتصفح).",
+      "• أعد بناء الواجهة بعد تعديل VITE_API_BASE_URL (يُثبت وقت البناء فقط).",
+      "• إن فتحت الموقع بـ https والـ API بـ http يمنع المتصفح الطلب (محتوى مختلط) — استخدم نفس البروتوكول أو TLS للـ API.",
+      "• في الخادم: CORS_ORIGINS يجب أن يتضمن أصل الصفحة بالضبط (مثال: http://187.127.142.186 بدون شرطة مائلة في النهاية).",
+      `• العنوان الحالي للـ API في هذه البنية: ${base}`,
+    ].join(" ");
   }
   if (err instanceof Error) return err.message;
   return "حدث خطأ غير متوقع";
