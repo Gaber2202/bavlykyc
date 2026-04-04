@@ -78,6 +78,17 @@ def validate_kyc_conditional_fields(data: dict[str, Any]) -> list[str]:
         if data.get("previous_visa_countries"):
             errors.append("دول التأشيرات غير مطلوبة عند لا")
 
+    hrel = data.get("has_relatives_abroad")
+    if hrel == YES:
+        rk = (data.get("relatives_kinship") or "").strip()
+        if not rk:
+            errors.append("صلة القرابة مطلوبة عند نعم لوجود أقارب في الخارج")
+        elif rk not in RELATIVES_KINSHIP_OPTIONS:
+            errors.append("صلة القرابة غير ضمن القائمة المعتمدة")
+    else:
+        if data.get("relatives_kinship"):
+            errors.append("صلة القرابة غير مطلوبة عند لا لوجود أقارب في الخارج")
+
     return errors
 
 

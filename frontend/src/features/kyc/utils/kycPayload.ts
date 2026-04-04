@@ -1,5 +1,5 @@
-import { SERVICE_BRANCHES } from "@/features/kyc/utils/kycFieldOptions";
-import type { KycFormValues } from "./kycZod";
+import { KYC_ASSIGNEES, SERVICE_BRANCHES } from "@/features/kyc/utils/kycFieldOptions";
+import { assignedPreview, type KycFormValues } from "./kycZod";
 
 function normalizeServiceBranchForForm(raw: string): KycFormValues["service_type"] {
   if ((SERVICE_BRANCHES as readonly string[]).includes(raw)) {
@@ -7,6 +7,7 @@ function normalizeServiceBranchForForm(raw: string): KycFormValues["service_type
   }
   if (raw === "بافلي") return "بافلي القاهرة";
   if (raw === "ترانس روفر") return "ترانس روفر القاهرة";
+  if (raw === "أخرى") return "بافلي القاهرة";
   return SERVICE_BRANCHES[0];
 }
 
@@ -24,6 +25,7 @@ export function toCreatePayload(values: KycFormValues) {
     passport_job_title: values.passport_job_title,
     other_job_title: values.other_job_title || null,
     service_type: values.service_type,
+    assigned_to: values.assigned_to.trim(),
     has_bank_statement: values.has_bank_statement,
     available_balance:
       values.has_bank_statement === "نعم" ? num(values.available_balance) : null,
@@ -66,6 +68,7 @@ export function recordToFormDefaults(r: {
   passport_job_title: string;
   other_job_title: string | null;
   service_type: string;
+  /** Stored assignee; falls back to rule default from service branch when missing. */
   assigned_to: string | null;
   has_bank_statement: string;
   available_balance: string | null;
@@ -98,6 +101,16 @@ export function recordToFormDefaults(r: {
     passport_job_title: r.passport_job_title,
     other_job_title: r.other_job_title ?? "",
     service_type: normalizeServiceBranchForForm(r.service_type),
+    assigned_to: (() => {
+      const raw = r.assigned_to?.trim();
+      if (raw && (KYC_ASSIGNEES as readonly string[]).includes(raw)) {
+        return raw as KycFormValues["assigned_to"];
+      }
+      const st = normalizeServiceBranchForForm(r.service_type);
+      const p = assignedPreview(st);
+      if (p !== "—") return p as KycFormValues["assigned_to"];
+      return KYC_ASSIGNEES[0];
+    })(),
     has_bank_statement: r.has_bank_statement as KycFormValues["has_bank_statement"],
     available_balance:
       r.available_balance != null && r.available_balance !== ""

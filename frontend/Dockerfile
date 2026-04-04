@@ -8,8 +8,9 @@ RUN npm ci
 
 COPY . .
 
-# Public API URL baked into the bundle (must match browser-reachable URL)
-ARG VITE_API_BASE_URL=http://localhost:8000/api/v1
+# Baked into the bundle. Empty = browser uses same-origin `/api/v1` (path-routed nginx).
+# Override only if the SPA is served from a different host than the API.
+ARG VITE_API_BASE_URL=
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
 RUN npm run build

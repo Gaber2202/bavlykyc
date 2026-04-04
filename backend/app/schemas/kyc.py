@@ -8,7 +8,7 @@ from typing import Any, Literal
 from pydantic import EmailStr, Field, model_validator
 
 from app.schemas.common import APIModel, StrictInputModel
-from app.constants.kyc_field_options import ServiceBranchLiteral
+from app.constants.kyc_field_options import AssigneeLiteral, ServiceBranchLiteral
 from app.utils.kyc_rules import (
     validate_kyc_conditional_fields,
     clear_conditional_fields_for_write,
@@ -32,6 +32,7 @@ class KYCBaseFields(StrictInputModel):
     other_job_title: str | None = Field(None, max_length=255)
 
     service_type: ServiceBranchLiteral
+    assigned_to: AssigneeLiteral
 
     has_bank_statement: YesNoLiteral
     available_balance: Decimal | None = None
@@ -83,6 +84,7 @@ class KYCUpdate(StrictInputModel):
     passport_job_title: str | None = Field(None, min_length=1, max_length=255)
     other_job_title: str | None = None
     service_type: ServiceBranchLiteral | None = None
+    assigned_to: AssigneeLiteral | None = None
     has_bank_statement: YesNoLiteral | None = None
     available_balance: Decimal | None = None
     expected_balance: Decimal | None = None
@@ -174,9 +176,10 @@ def build_kyc_dict_from_create(
     is_admin: bool,
 ) -> dict[str, Any]:
     raw = payload.model_dump()
-    assigned, by_rule = resolve_assigned_to(payload.service_type)
-    raw["assigned_to"] = assigned
-    raw["assigned_by_rule"] = by_rule
+    rule_assigned, rule_ok = resolve_assigned_to(payload.service_type)
+    chosen = payload.assigned_to.strip()
+    raw["assigned_to"] = chosen
+    raw["assigned_by_rule"] = bool(rule_ok and rule_assigned == chosen)
     cleared = clear_conditional_fields_for_write(raw)
     cleared["created_by_id"] = user_id
     cleared["updated_by_id"] = user_id
@@ -225,10 +228,20 @@ def build_kyc_dict_from_update(
         "status": existing_row.status,
     }
     merged = {**current, **patch}
-    if "service_type" in patch:
-        assigned, by_rule = resolve_assigned_to(str(merged["service_type"]))
-        merged["assigned_to"] = assigned
-        merged["assigned_by_rule"] = by_rule
+    st = str(merged["service_type"])
+    rule_assigned, rule_ok = resolve_assigned_to(st)
+    if "assigned_to" in patch:
+        raw_at = patch.get("assigned_to")
+        if raw_at is not None and str(raw_at).strip():
+            val = str(raw_at).strip()
+            merged["assigned_to"] = val
+            merged["assigned_by_rule"] = bool(rule_ok and rule_assigned == val)
+        else:
+            merged["assigned_to"] = rule_assigned
+            merged["assigned_by_rule"] = rule_ok
+    elif "service_type" in patch:
+        merged["assigned_to"] = rule_assigned
+        merged["assigned_by_rule"] = rule_ok
     merged["updated_by_id"] = user_id
     errs = validate_kyc_conditional_fields(merged)
     if errs:

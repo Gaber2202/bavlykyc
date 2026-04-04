@@ -99,6 +99,9 @@ export DATABASE_URL_SYNC=postgresql+psycopg://postgres:postgres@localhost:5432/b
 alembic upgrade head
 PYTHONPATH=. python scripts/seed_admin.py
 
+# Optional: login + POST /kyc (needs DB at Alembic head and seeded user)
+# TEST_LOGIN_PASSWORD='your-admin-password' PYTHONPATH=. python -m unittest tests.test_kyc_create_http -v
+
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
@@ -349,7 +352,7 @@ Use this if anything was skipped or the stack is half-installed.
 | 2 | **git**, **nginx**, **curl** on the host: `sudo apt update && sudo apt install -y git nginx curl` | ☐ |
 | 3 | **Firewall:** §14.1 (`ufw` allows SSH, 80, 443). | ☐ |
 | 4 | Repo at **`/opt/BavlyKYC`** (`git clone` §14.2) and **`git pull`** for latest. | ☐ |
-| 5 | **`/opt/BavlyKYC/deploy/.env`** exists (copy from `vps.bavlykyc.env.example`); includes **`SECRET_KEY`** (≥32 chars), **`DATABASE_URL`** / **`DATABASE_URL_SYNC`**, **`POSTGRES_PASSWORD`**, **`CORS_ORIGINS`**, **`VITE_API_BASE_URL`**. | ☐ |
+| 5 | **`/opt/BavlyKYC/deploy/.env`** exists (copy from `vps.bavlykyc.env.example`); includes **`SECRET_KEY`** (≥32 chars), **`DATABASE_URL`** / **`DATABASE_URL_SYNC`**, **`POSTGRES_PASSWORD`**, **`CORS_ORIGINS`**. **`VITE_API_BASE_URL`** is optional (omit = bundle uses same-origin **`/api/v1`**). | ☐ |
 | 6 | **Host nginx** §14.3 — site enabled, `default` removed, `sudo nginx -t` OK, `systemctl reload nginx`. | ☐ |
 | 7 | **Containers:** from `deploy/`, `docker compose -f docker-compose.vps.example.yml --env-file .env up -d --build` — `docker compose ... ps` shows **db**, **api**, **web** **running**. | ☐ |
 | 8 | **Migrations** (once per empty DB): §14.4 `alembic upgrade head`. | ☐ |
@@ -418,7 +421,7 @@ curl -sS http://187.127.142.186/health
 curl -sS http://187.127.142.186/health/ready
 ```
 
-Open `http://187.127.142.186` in a browser and sign in. If the UI cannot reach the API, confirm `CORS_ORIGINS` and `VITE_API_BASE_URL` in `deploy/.env` match **`http://187.127.142.186`** (no trailing slash) and rebuild: `docker compose ... up -d --build`.
+Open `http://187.127.142.186` in a browser and sign in. If the UI cannot reach the API, confirm **`CORS_ORIGINS`** is exactly **`http://187.127.142.186`** (no trailing slash). Rebuild **`web`** after any **`VITE_API_BASE_URL`** change (`docker compose ... build --no-cache web` then `up -d`). If the error toast shows **`localhost:8000`**, the bundle was built with the old Docker default or you are in **`npm run dev`** without `frontend/.env` — pull latest, rebuild **`web`**, or set **`VITE_API_BASE_URL`** for local dev.
 
 ### 14.6 Deploy updates from your laptop (optional)
 
@@ -453,7 +456,7 @@ docker compose -f docker-compose.vps.example.yml --env-file .env logs api --tail
 | `api` **Exited** with pydantic / `ValidationError` | Missing or invalid `SECRET_KEY` (min 32 chars), `DATABASE_URL`, or `CORS_ORIGINS` in `deploy/.env`. |
 | `api` **Restarting**; logs show OOM or worker boot errors | Small VPS: set `WEB_CONCURRENCY=1` in `deploy/.env` and `up -d --build` again. |
 | Compose error `set SECRET_KEY in deploy/.env` | Run with `--env-file .env` from `deploy/`, or ensure those variables exist in `.env` (no typos). |
-| **422** saving KYC: `service_type` must be `بافلي`/`ترانس روفر`/`أخرى`, or **`relatives_kinship: Extra inputs are not permitted`** | The **API container is an old image** (before فرع الخدمة + صلة القرابة). **Rebuild and recreate `api`**, run **`alembic upgrade head`**, and confirm `git log -1` on the server includes that feature. The **web** and **api** images must both match `main`. |
+| **422** saving KYC: `service_type` not one of the four branches (`بافلي الاسكندرية`, `بافلي القاهرة`, `ترانس روفر الاسكندرية`, `ترانس روفر القاهرة`), kinship errors, or **`relatives_kinship: Extra inputs are not permitted`** | **Stale API code/image** (old literals / no `relatives_kinship` column). **Rebuild and recreate `api`**, run **`alembic upgrade head`**. Locally verify schema: `cd backend && PYTHONPATH=. python -m unittest discover -s tests -p 'test_*.py' -v`. |
 
 **One-off API foreground run** (see the crash without restart loop):
 

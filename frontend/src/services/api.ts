@@ -1,12 +1,57 @@
 import type { MeResponse, TokenPair } from "@/types/api";
 
-/** Same-origin `/api/v1` on Vercel (proxied to FastAPI); localhost in dev. */
-const rawBase = import.meta.env.VITE_API_BASE_URL?.trim();
-const base = rawBase
-  ? rawBase.replace(/\/$/, "")
-  : import.meta.env.DEV
-    ? "http://localhost:8000/api/v1"
-    : "/api/v1";
+function browserOrigin(): string | null {
+  if (typeof window === "undefined") return null;
+  const o = window.location.origin;
+  if (!o || o === "null") return null;
+  return o;
+}
+
+function isLocalApiHost(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return u.hostname === "localhost" || u.hostname === "127.0.0.1";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * API base for `fetch`. Dev → localhost backend. Prod empty VITE → same-origin `/api/v1`.
+ * If a prod bundle was wrongly baked with localhost but the page is opened from another
+ * host (e.g. VPS IP), use that page's origin so nginx path routing still works.
+ */
+function resolveApiBase(): string {
+  const rawBase = import.meta.env.VITE_API_BASE_URL?.trim();
+  let resolved = rawBase
+    ? rawBase.replace(/\/$/, "")
+    : import.meta.env.DEV
+      ? "http://localhost:8000/api/v1"
+      : "/api/v1";
+
+  if (!import.meta.env.DEV && resolved.startsWith("http")) {
+    const origin = browserOrigin();
+    const pageHost = (() => {
+      try {
+        return origin ? new URL(origin).hostname : "";
+      } catch {
+        return "";
+      }
+    })();
+    if (
+      origin &&
+      pageHost !== "localhost" &&
+      pageHost !== "127.0.0.1" &&
+      isLocalApiHost(resolved)
+    ) {
+      resolved = `${origin}/api/v1`.replace(/\/$/, "");
+    }
+  }
+
+  return resolved;
+}
+
+const base = resolveApiBase();
 
 let accessToken: string | null = null;
 let refreshToken: string | null = null;
@@ -166,13 +211,27 @@ export function formatApiErrorMessage(err: unknown): string {
       // eslint-disable-next-line no-console
       console.warn("[KYC API] فشل الطلب. العنوان المستخدم:", base);
     }
-    return [
+    const pageOrigin = browserOrigin();
+    const localhostMismatch =
+      pageOrigin &&
+      (base.includes("localhost") || base.includes("127.0.0.1")) &&
+      !pageOrigin.includes("localhost") &&
+      !pageOrigin.includes("127.0.0.1");
+    const lines = [
       "تعذر الاتصال بالخادم (الشبكة أو سياسة المتصفح).",
       "• أعد بناء الواجهة بعد تعديل VITE_API_BASE_URL (يُثبت وقت البناء فقط).",
       "• إن فتحت الموقع بـ https والـ API بـ http يمنع المتصفح الطلب (محتوى مختلط) — استخدم نفس البروتوكول أو TLS للـ API.",
       "• في الخادم: CORS_ORIGINS يجب أن يتضمن أصل الصفحة بالضبط (مثال: http://187.127.142.186 بدون شرطة مائلة في النهاية).",
       `• العنوان الحالي للـ API في هذه البنية: ${base}`,
-    ].join(" ");
+    ];
+    if (localhostMismatch) {
+      lines.splice(
+        1,
+        0,
+        `• يبدو أنك تفتح الموقع من ${pageOrigin} بينما الواجهة تستدعي localhost — حدّث الصورة أو اترك VITE_API_BASE_URL فارغاً لنفس المضيف، ثم أعد بناء web.`,
+      );
+    }
+    return lines.join(" ");
   }
   if (err instanceof Error) return err.message;
   return "حدث خطأ غير متوقع";

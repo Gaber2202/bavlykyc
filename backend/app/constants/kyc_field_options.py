@@ -19,6 +19,10 @@ ServiceBranchLiteral = Literal[
     "ترانس روفر القاهرة",
 ]
 
+# المكلّف بالمتابعة — fixed list (UI dropdown)
+ASSIGNEE_OPTIONS: tuple[str, ...] = ("أحمد الشيخ", "محمود الشيخ")
+AssigneeLiteral = Literal["أحمد الشيخ", "محمود الشيخ"]
+
 # صلة القرابة — عند «هل ليك حد في الخارج» = نعم
 RELATIVES_KINSHIP_OPTIONS: frozenset[str] = frozenset(
     {

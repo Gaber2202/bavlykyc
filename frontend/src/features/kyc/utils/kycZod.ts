@@ -1,11 +1,24 @@
 import { z } from "zod";
 
-import { KINSHIP_RELATIONS_SET, SERVICE_BRANCHES } from "@/features/kyc/utils/kycFieldOptions";
+import {
+  KINSHIP_RELATIONS_SET,
+  KYC_ASSIGNEES,
+  SERVICE_BRANCHES,
+} from "@/features/kyc/utils/kycFieldOptions";
 
 const YES = "نعم";
 const NO = "لا";
 
 const serviceBranchEnum = z.enum(SERVICE_BRANCHES as unknown as [string, ...string[]]);
+const assigneeEnum = z.enum(KYC_ASSIGNEES as unknown as [string, ...string[]]);
+
+/** Default assignee label from فرع الخدمة (user may override in the form). */
+export function assignedPreview(serviceType: string) {
+  const s = serviceType.trim();
+  if (s.startsWith("بافلي")) return "أحمد الشيخ";
+  if (s.startsWith("ترانس روفر")) return "محمود الشيخ";
+  return "—";
+}
 
 export const kycFormSchema = z
   .object({
@@ -15,6 +28,7 @@ export const kycFormSchema = z
     passport_job_title: z.string().min(1),
     other_job_title: z.string().optional().nullable(),
     service_type: serviceBranchEnum,
+    assigned_to: assigneeEnum,
     has_bank_statement: z.enum([YES, NO]),
     available_balance: z.string().optional().nullable(),
     expected_balance: z.string().optional().nullable(),
@@ -201,6 +215,7 @@ export const defaultKycValues: KycFormValues = {
   passport_job_title: "",
   other_job_title: "",
   service_type: SERVICE_BRANCHES[0],
+  assigned_to: assignedPreview(SERVICE_BRANCHES[0]),
   has_bank_statement: NO,
   available_balance: "",
   expected_balance: "",
@@ -225,10 +240,3 @@ export const defaultKycValues: KycFormValues = {
   recommendation: "",
   status: "مسودة",
 };
-
-export function assignedPreview(serviceType: string) {
-  const s = serviceType.trim();
-  if (s.startsWith("بافلي")) return "أحمد الشيخ";
-  if (s.startsWith("ترانس روفر")) return "محمود الشيخ";
-  return "—";
-}

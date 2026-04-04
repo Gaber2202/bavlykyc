@@ -1,4 +1,8 @@
-import { KINSHIP_RELATIONS, SERVICE_BRANCHES } from "@/features/kyc/utils/kycFieldOptions";
+import {
+  KINSHIP_RELATIONS,
+  KYC_ASSIGNEES,
+  SERVICE_BRANCHES,
+} from "@/features/kyc/utils/kycFieldOptions";
 import {
   kycFormSchema,
   defaultKycValues,
@@ -7,7 +11,7 @@ import {
 } from "@/features/kyc/utils/kycZod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuthStore } from "@/stores/authStore";
-import { useEffect } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useForm, type Resolver } from "react-hook-form";
 
 interface Props {
@@ -37,6 +41,21 @@ export function KycForm({ defaultValues, submitLabel, onSubmit, disabled }: Prop
   const prevVisa = form.watch("has_previous_visas");
   const svc = form.watch("service_type");
   const relAbroad = form.watch("has_relatives_abroad");
+  const prevServiceBranchRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (prevServiceBranchRef.current === undefined) {
+      prevServiceBranchRef.current = svc;
+      return;
+    }
+    if (prevServiceBranchRef.current !== svc) {
+      const next = assignedPreview(svc);
+      if (next !== "—") {
+        form.setValue("assigned_to", next, { shouldValidate: true });
+      }
+      prevServiceBranchRef.current = svc;
+    }
+  }, [svc, form]);
 
   // Keep hidden conditional fields cleared (matches backend `clear_conditional_fields_for_write`).
   useEffect(() => {
@@ -118,13 +137,23 @@ export function KycForm({ defaultValues, submitLabel, onSubmit, disabled }: Prop
               ))}
             </select>
           </Field>
-          <div className="md:col-span-2 rounded-lg border border-gold-600/30 bg-ink/80 px-4 py-3 text-sm shadow-inner shadow-black/40">
-            <div className="text-gold-500 text-xs uppercase tracking-wide">التكليف التلقائي</div>
-            <div className="text-gold-200 mt-1 font-medium">{assignedPreview(svc)}</div>
-            <p className="text-gold-600 text-xs mt-2 leading-relaxed">
-              فروع بافلي ← أحمد الشيخ · فروع ترانس روفر ← محمود الشيخ
-            </p>
-          </div>
+          <Field
+            label="المكلَّف بالمتابعة"
+            error={form.formState.errors.assigned_to}
+            hint={
+              <p className="text-gold-600 text-xs mt-1.5 leading-relaxed">
+                يُقترح تلقائياً حسب فرع الخدمة؛ يمكنك اختيار أحمد الشيخ أو محمود الشيخ يدوياً.
+              </p>
+            }
+          >
+            <select className="input-field" {...form.register("assigned_to")}>
+              {KYC_ASSIGNEES.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </Field>
         </div>
       </section>
 
@@ -299,16 +328,19 @@ function SectionTitle({ n, title }: { n: number; title: string }) {
 function Field({
   label,
   error,
+  hint,
   children,
 }: {
   label: string;
   error?: { message?: string };
+  hint?: ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <label className="block text-sm">
       <span className="text-gold-300/90 mb-1.5 block font-medium">{label}</span>
       {children}
+      {hint}
       {error?.message && (
         <span className="text-red-400/95 text-xs mt-1.5 block">{error.message}</span>
       )}

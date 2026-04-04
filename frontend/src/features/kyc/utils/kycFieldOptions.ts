@@ -9,6 +9,11 @@ export const SERVICE_BRANCHES = [
 
 export type ServiceBranch = (typeof SERVICE_BRANCHES)[number];
 
+/** Must match backend `ASSIGNEE_OPTIONS` / `AssigneeLiteral`. */
+export const KYC_ASSIGNEES = ["أحمد الشيخ", "محمود الشيخ"] as const;
+
+export type KycAssignee = (typeof KYC_ASSIGNEES)[number];
+
 export const KINSHIP_RELATIONS = [
   "الأب",
   "الأم",

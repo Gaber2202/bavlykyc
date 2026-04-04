@@ -1,7 +1,8 @@
 # Example production-style Compose (adjust for your secrets and managed Postgres).
 # Not wired by default — copy to your ops repo or merge patterns into your orchestrator.
 #
-# Build SPA with the public API URL visible in browsers:
+# Build SPA: set VITE_API_BASE_URL only if the API is on another origin.
+# Same host + path proxy (e.g. /api/v1) → omit / empty → bundle uses `/api/v1`.
 #   VITE_API_BASE_URL=https://api.example.com/api/v1
 #
 # Do not run more than one one-off migration job concurrently; migrations are
@@ -39,7 +40,7 @@ services:
       context: ../frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:?public API base URL for browser}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
     restart: unless-stopped
     ports:
       - "8080:8080"
