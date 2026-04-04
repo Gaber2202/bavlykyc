@@ -29,12 +29,13 @@ services:
       start_period: 15s
 
   api:
-    image: bavlykyc-api:${BAVLYKYC_API_TAG:-kyc-schema-v4}
+    # Name is project-specific so `docker pull` never fetches a random public `bavlykyc-api` image from Docker Hub.
+    image: bavlykyc-stack-api:${BAVLYKYC_API_TAG:-kyc5}
     build:
       context: ../backend
       dockerfile: Dockerfile
       args:
-        KYC_SCHEMA_BUILD: ${KYC_SCHEMA_BUILD:-4}
+        KYC_SCHEMA_BUILD: ${KYC_SCHEMA_BUILD:-5}
     restart: unless-stopped
     env_file:
       - .env
@@ -63,13 +64,13 @@ services:
       start_period: 90s
 
   web:
-    image: bavlykyc-web:${BAVLYKYC_WEB_TAG:-assets-v4}
+    image: bavlykyc-stack-web:${BAVLYKYC_WEB_TAG:-web5}
     build:
       context: ../frontend
       dockerfile: Dockerfile
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
-        WEB_ASSETS_BUILD: ${WEB_ASSETS_BUILD:-4}
+        WEB_ASSETS_BUILD: ${WEB_ASSETS_BUILD:-5}
     restart: unless-stopped
     ports:
       - "127.0.0.1:8080:8080"

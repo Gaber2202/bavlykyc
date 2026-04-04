@@ -440,6 +440,7 @@ ssh root@187.127.142.186 'cd /opt/BavlyKYC/deploy && chmod +x vps-redeploy.sh &&
 | `deploy/docker-compose.vps.yml` | `db` + `api` + `web`; **versioned `image:`** for api/web (avoids stale schema) |
 | `deploy/docker-compose.vps.example.yml` | Same content as above (legacy `-f` name) |
 | `deploy/vps-redeploy.sh` | Hard rebuild api + web + migrations after `git pull` |
+| `deploy/diagnose-vps-api.sh` | What listens on :8000, `/health`, and `/api/v1` headers (find wrong/old API) |
 | `deploy/nginx.vps-ip-path.example.conf` | Host nginx for `187.127.142.186` |
 | `scripts/sync-to-vps.example.sh` | `rsync` to `root@187.127.142.186:/opt/BavlyKYC` |
 
@@ -461,7 +462,7 @@ docker compose -f docker-compose.vps.yml --env-file .env logs api --tail 120
 | `api` **Restarting**; logs show OOM or worker boot errors | Small VPS: set `WEB_CONCURRENCY=1` in `deploy/.env` and `up -d --build` again. |
 | Compose error `set SECRET_KEY in deploy/.env` | Run with `--env-file .env` from `deploy/`, or ensure those variables exist in `.env` (no typos). |
 | **422** saving KYC: `service_type` not one of the four branches (`بافلي الاسكندرية`, `بافلي القاهرة`, `ترانس روفر الاسكندرية`, `ترانس روفر القاهرة`), kinship errors, or **`relatives_kinship: Extra inputs are not permitted`** | **Stale API code/image** (old literals / no `relatives_kinship` column). **Rebuild and recreate `api`**, run **`alembic upgrade head`**. Locally verify schema: `cd backend && PYTHONPATH=. python -m unittest discover -s tests -p 'test_*.py' -v`. |
-| VPS works locally but errors mention **`بافلي`/`ترانس روفر`/`أخرى`** and **Extra inputs** for `assigned_to` / `relatives_kinship` | **Stale `api` image** (often an old anonymous Compose image). **`git pull`**, then from `deploy/` run **`./vps-redeploy.sh`**. Bump **`BAVLYKYC_API_TAG`** in `.env` (e.g. `kyc-schema-v5`) if a normal rebuild still serves old code — forces a new image name. Verify: **`curl -sS http://127.0.0.1:8000/health`** includes **`api_contract`**, or **`./verify-vps-api-image.sh`**. |
+| VPS works locally but errors mention **`بافلي`/`ترانس روفر`/`أخرى`** and **Extra inputs** for `assigned_to` / `relatives_kinship` | **Traffic is not hitting the current FastAPI build.** Common causes: (1) **`docker compose pull`** pulled a **wrong** image named like `bavlykyc-api` from a registry — this repo now uses **`bavlykyc-stack-api`** / **`bavlykyc-stack-web`** so only **local builds** apply. (2) **Another process** still bound to **port 8000** (old uvicorn/systemd). (3) Browser calls a **different API host** (check DevTools → Network → request URL). Run **`./diagnose-vps-api.sh`**, then **`./vps-redeploy.sh`**. New API adds **`X-BavlyKYC-Contract`** on **`/api/v1/*`** responses — if that header is missing, you are not on the new container. |
 
 **One-off API foreground run** (see the crash without restart loop):
 

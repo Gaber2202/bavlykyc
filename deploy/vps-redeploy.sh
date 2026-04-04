@@ -28,6 +28,9 @@ echo ">>> Alembic migrations"
 echo ">>> Health (expect api_contract in JSON)"
 curl -sS http://127.0.0.1:8000/health || true
 echo ""
+echo ">>> API v1 headers (expect X-BavlyKYC-Contract on any /api/v1/* response)"
+curl -sSI http://127.0.0.1:8000/api/v1/auth/me | tr -d '\r' | grep -iE '^(HTTP|x-bavlykyc-contract)' || true
+echo ""
 
 echo ">>> Optional: verify Python imports inside container"
 "${COMPOSE[@]}" exec -T api python -c "

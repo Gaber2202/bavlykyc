@@ -8,6 +8,7 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
@@ -50,7 +51,19 @@ def create_app() -> FastAPI:
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", "Accept"],
+        expose_headers=["X-BavlyKYC-Contract"],
     )
+
+    class _ApiContractHeaderMiddleware(BaseHTTPMiddleware):
+        async def dispatch(self, request: Request, call_next):
+            response = await call_next(request)
+            prefix = settings.api_v1_prefix.rstrip("/")
+            p = request.url.path
+            if p == prefix or p.startswith(f"{prefix}/"):
+                response.headers["X-BavlyKYC-Contract"] = API_CONTRACT_LABEL
+            return response
+
+    app.add_middleware(_ApiContractHeaderMiddleware)
 
     def _validation_payload(exc: RequestValidationError) -> dict:
         if settings.debug:
