@@ -42,6 +42,7 @@ export interface KYCRecordDto {
   passport_job_title: string;
   other_job_title: string | null;
   service_type: string;
+  relatives_kinship: string | null;
   assigned_to: string | null;
   assigned_by_rule: boolean;
   has_bank_statement: string;

@@ -1,3 +1,4 @@
+import { KINSHIP_RELATIONS, SERVICE_BRANCHES } from "@/features/kyc/utils/kycFieldOptions";
 import {
   kycFormSchema,
   defaultKycValues,
@@ -18,7 +19,6 @@ interface Props {
 
 export function KycForm({ defaultValues, submitLabel, onSubmit, disabled }: Props) {
   const user = useAuthStore((s) => s.user);
-  const isAdmin = user?.role === "admin";
   const lockedEmployeeName = user?.full_name?.trim() || user?.username?.trim() || "";
 
   const form = useForm<KycFormValues>({
@@ -36,6 +36,7 @@ export function KycForm({ defaultValues, submitLabel, onSubmit, disabled }: Prop
   const prevRej = form.watch("previous_rejected");
   const prevVisa = form.watch("has_previous_visas");
   const svc = form.watch("service_type");
+  const relAbroad = form.watch("has_relatives_abroad");
 
   // Keep hidden conditional fields cleared (matches backend `clear_conditional_fields_for_write`).
   useEffect(() => {
@@ -74,10 +75,10 @@ export function KycForm({ defaultValues, submitLabel, onSubmit, disabled }: Prop
   }, [prevVisa, form]);
 
   useEffect(() => {
-    if (svc !== "أخرى") {
-      form.setValue("assigned_to_override", "");
+    if (relAbroad !== "نعم") {
+      form.setValue("relatives_kinship", "");
     }
-  }, [svc, form]);
+  }, [relAbroad, form]);
 
   return (
     <form
@@ -108,28 +109,22 @@ export function KycForm({ defaultValues, submitLabel, onSubmit, disabled }: Prop
           <Field label="مسمى وظيفي آخر (اختياري)" error={form.formState.errors.other_job_title}>
             <input className="input-field" {...form.register("other_job_title")} />
           </Field>
-          <Field label="نوع الخدمة" error={form.formState.errors.service_type}>
+          <Field label="فرع الخدمة" error={form.formState.errors.service_type}>
             <select className="input-field" {...form.register("service_type")}>
-              <option value="بافلي">بافلي</option>
-              <option value="ترانس روفر">ترانس روفر</option>
-              <option value="أخرى">أخرى</option>
+              {SERVICE_BRANCHES.map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
             </select>
           </Field>
           <div className="md:col-span-2 rounded-lg border border-gold-600/30 bg-ink/80 px-4 py-3 text-sm shadow-inner shadow-black/40">
             <div className="text-gold-500 text-xs uppercase tracking-wide">التكليف التلقائي</div>
             <div className="text-gold-200 mt-1 font-medium">{assignedPreview(svc)}</div>
             <p className="text-gold-600 text-xs mt-2 leading-relaxed">
-              بافلي ← أحمد الشيخ · ترانس روفر ← محمود الشيخ · أخرى يتطلب تعيين المسؤول عند الحاجة
+              فروع بافلي ← أحمد الشيخ · فروع ترانس روفر ← محمود الشيخ
             </p>
           </div>
-          {isAdmin && svc === "أخرى" && (
-            <Field
-              label="تعيين يدوي (مسؤول فقط)"
-              error={form.formState.errors.assigned_to_override}
-            >
-              <input className="input-field" {...form.register("assigned_to_override")} />
-            </Field>
-          )}
         </div>
       </section>
 
@@ -165,12 +160,24 @@ export function KycForm({ defaultValues, submitLabel, onSubmit, disabled }: Prop
               <input type="number" className="input-field" {...form.register("children_count")} />
             </Field>
           )}
-          <Field label="أقارب بالخارج" error={form.formState.errors.has_relatives_abroad}>
+          <Field label="هل ليك حد في الخارج؟" error={form.formState.errors.has_relatives_abroad}>
             <select className="input-field" {...form.register("has_relatives_abroad")}>
               <option value="نعم">نعم</option>
               <option value="لا">لا</option>
             </select>
           </Field>
+          {relAbroad === "نعم" && (
+            <Field label="صلة القرابة" error={form.formState.errors.relatives_kinship}>
+              <select className="input-field" {...form.register("relatives_kinship")}>
+                <option value="">اختر صلة القرابة</option>
+                {KINSHIP_RELATIONS.map((k) => (
+                  <option key={k} value={k}>
+                    {k}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
           <Field label="نوع الجنسية" error={form.formState.errors.nationality_type}>
             <select className="input-field" {...form.register("nationality_type")}>
               <option value="مصري">مصري</option>

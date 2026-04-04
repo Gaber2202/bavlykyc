@@ -1,4 +1,14 @@
+import { SERVICE_BRANCHES } from "@/features/kyc/utils/kycFieldOptions";
 import type { KycFormValues } from "./kycZod";
+
+function normalizeServiceBranchForForm(raw: string): KycFormValues["service_type"] {
+  if ((SERVICE_BRANCHES as readonly string[]).includes(raw)) {
+    return raw as KycFormValues["service_type"];
+  }
+  if (raw === "بافلي") return "بافلي القاهرة";
+  if (raw === "ترانس روفر") return "ترانس روفر القاهرة";
+  return SERVICE_BRANCHES[0];
+}
 
 function num(s: string | null | undefined) {
   if (!s?.trim()) return null;
@@ -14,7 +24,6 @@ export function toCreatePayload(values: KycFormValues) {
     passport_job_title: values.passport_job_title,
     other_job_title: values.other_job_title || null,
     service_type: values.service_type,
-    assigned_to_override: values.assigned_to_override || null,
     has_bank_statement: values.has_bank_statement,
     available_balance:
       values.has_bank_statement === "نعم" ? num(values.available_balance) : null,
@@ -24,6 +33,8 @@ export function toCreatePayload(values: KycFormValues) {
     children_count:
       values.marital_status === "متزوج" ? values.children_count ?? null : null,
     has_relatives_abroad: values.has_relatives_abroad,
+    relatives_kinship:
+      values.has_relatives_abroad === "نعم" ? values.relatives_kinship?.trim() || null : null,
     nationality_type: values.nationality_type,
     nationality: values.nationality_type === "غير مصري" ? values.nationality : null,
     residency_status:
@@ -62,6 +73,7 @@ export function recordToFormDefaults(r: {
   marital_status: string;
   children_count: number | null;
   has_relatives_abroad: string;
+  relatives_kinship: string | null;
   nationality_type: string;
   nationality: string | null;
   residency_status: string | null;
@@ -85,8 +97,7 @@ export function recordToFormDefaults(r: {
     age: r.age,
     passport_job_title: r.passport_job_title,
     other_job_title: r.other_job_title ?? "",
-    service_type: r.service_type as KycFormValues["service_type"],
-    assigned_to_override: "",
+    service_type: normalizeServiceBranchForForm(r.service_type),
     has_bank_statement: r.has_bank_statement as KycFormValues["has_bank_statement"],
     available_balance:
       r.available_balance != null && r.available_balance !== ""
@@ -99,6 +110,7 @@ export function recordToFormDefaults(r: {
     marital_status: r.marital_status as KycFormValues["marital_status"],
     children_count: r.children_count ?? undefined,
     has_relatives_abroad: r.has_relatives_abroad as KycFormValues["has_relatives_abroad"],
+    relatives_kinship: r.relatives_kinship ?? "",
     nationality_type: r.nationality_type as KycFormValues["nationality_type"],
     nationality: r.nationality ?? "",
     residency_status: (r.residency_status as KycFormValues["residency_status"]) ?? undefined,

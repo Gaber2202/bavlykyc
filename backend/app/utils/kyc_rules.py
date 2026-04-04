@@ -1,36 +1,22 @@
 from __future__ import annotations
 """KYC assignment and validation helpers."""
 
-from decimal import Decimal
 from typing import Any
 
-SERVICE_TYPE_ASSIGNEE: dict[str, str | None] = {
-    "بافلي": "أحمد الشيخ",
-    "ترانس روفر": "محمود الشيخ",
-    "أخرى": None,
-}
+from app.constants.kyc_field_options import RELATIVES_KINSHIP_OPTIONS
 
 YES = "نعم"
 NO = "لا"
 
 
-def resolve_assigned_to(
-    service_type: str,
-    manual_assigned_to: str | None,
-    is_admin: bool,
-) -> tuple[str | None, bool]:
-    """Return (assigned_to, assigned_by_rule). Admin may override for أخرى."""
-    base = SERVICE_TYPE_ASSIGNEE.get(service_type)
-    if service_type == "أخرى":
-        if is_admin and manual_assigned_to and manual_assigned_to.strip():
-            return manual_assigned_to.strip(), False
-        # Rule result: empty assignment when service type is "أخرى" unless admin overrides.
-        return None, True
-    if base:
-        return base, True
-    if manual_assigned_to and manual_assigned_to.strip() and is_admin:
-        return manual_assigned_to.strip(), False
-    return manual_assigned_to.strip() if manual_assigned_to else None, False
+def resolve_assigned_to(service_type: str) -> tuple[str | None, bool]:
+    """Assign owner from فرع الخدمة (بافلي → أحمد، ترانس روفر → محمود)."""
+    st = (service_type or "").strip()
+    if st.startswith("بافلي"):
+        return "أحمد الشيخ", True
+    if st.startswith("ترانس روفر"):
+        return "محمود الشيخ", True
+    return None, False
 
 
 def validate_kyc_conditional_fields(data: dict[str, Any]) -> list[str]:
@@ -118,5 +104,8 @@ def clear_conditional_fields_for_write(data: dict[str, Any]) -> dict[str, Any]:
 
     if out.get("has_previous_visas") != YES:
         out["previous_visa_countries"] = None
+
+    if out.get("has_relatives_abroad") != YES:
+        out["relatives_kinship"] = None
 
     return out

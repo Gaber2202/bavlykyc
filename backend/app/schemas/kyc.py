@@ -8,13 +8,13 @@ from typing import Any, Literal
 from pydantic import EmailStr, Field, model_validator
 
 from app.schemas.common import APIModel, StrictInputModel
+from app.constants.kyc_field_options import ServiceBranchLiteral
 from app.utils.kyc_rules import (
     validate_kyc_conditional_fields,
     clear_conditional_fields_for_write,
     resolve_assigned_to,
 )
 
-ServiceTypeLiteral = Literal["بافلي", "ترانس روفر", "أخرى"]
 YesNoLiteral = Literal["نعم", "لا"]
 MaritalLiteral = Literal["أعزب", "متزوج", "مطلق", "أرمل"]
 NationalityTypeLiteral = Literal["مصري", "غير مصري"]
@@ -31,12 +31,7 @@ class KYCBaseFields(StrictInputModel):
     passport_job_title: str = Field(..., min_length=1, max_length=255)
     other_job_title: str | None = Field(None, max_length=255)
 
-    service_type: ServiceTypeLiteral
-    assigned_to_override: str | None = Field(
-        None,
-        max_length=255,
-        description="للمسؤول فقط: تعيين يدوي عند أخرى",
-    )
+    service_type: ServiceBranchLiteral
 
     has_bank_statement: YesNoLiteral
     available_balance: Decimal | None = None
@@ -46,6 +41,7 @@ class KYCBaseFields(StrictInputModel):
     children_count: int | None = Field(None, ge=0, le=50)
 
     has_relatives_abroad: YesNoLiteral
+    relatives_kinship: str | None = Field(None, max_length=120)
     nationality_type: NationalityTypeLiteral
     nationality: str | None = Field(None, max_length=120)
     residency_status: YesNoLiteral | None = None
@@ -86,14 +82,14 @@ class KYCUpdate(StrictInputModel):
     age: int | None = Field(None, ge=0, le=120)
     passport_job_title: str | None = Field(None, min_length=1, max_length=255)
     other_job_title: str | None = None
-    service_type: ServiceTypeLiteral | None = None
-    assigned_to_override: str | None = Field(None, max_length=255)
+    service_type: ServiceBranchLiteral | None = None
     has_bank_statement: YesNoLiteral | None = None
     available_balance: Decimal | None = None
     expected_balance: Decimal | None = None
     marital_status: MaritalLiteral | None = None
     children_count: int | None = Field(None, ge=0, le=50)
     has_relatives_abroad: YesNoLiteral | None = None
+    relatives_kinship: str | None = Field(None, max_length=120)
     nationality_type: NationalityTypeLiteral | None = None
     nationality: str | None = None
     residency_status: YesNoLiteral | None = None
@@ -135,6 +131,7 @@ class KYCRead(APIModel):
     marital_status: str
     children_count: int | None
     has_relatives_abroad: str
+    relatives_kinship: str | None
     nationality_type: str
     nationality: str | None
     residency_status: str | None
@@ -176,12 +173,8 @@ def build_kyc_dict_from_create(
     user_id: str,
     is_admin: bool,
 ) -> dict[str, Any]:
-    raw = payload.model_dump(exclude={"assigned_to_override"})
-    assigned, by_rule = resolve_assigned_to(
-        payload.service_type,
-        payload.assigned_to_override,
-        is_admin,
-    )
+    raw = payload.model_dump()
+    assigned, by_rule = resolve_assigned_to(payload.service_type)
     raw["assigned_to"] = assigned
     raw["assigned_by_rule"] = by_rule
     cleared = clear_conditional_fields_for_write(raw)
@@ -198,7 +191,6 @@ def build_kyc_dict_from_update(
     is_admin: bool,
 ) -> dict[str, Any]:
     patch = payload.model_dump(exclude_unset=True)
-    override = patch.pop("assigned_to_override", None)
     current = {
         "employee_name": existing_row.employee_name,
         "client_full_name": existing_row.client_full_name,
@@ -214,6 +206,7 @@ def build_kyc_dict_from_update(
         "marital_status": existing_row.marital_status,
         "children_count": existing_row.children_count,
         "has_relatives_abroad": existing_row.has_relatives_abroad,
+        "relatives_kinship": existing_row.relatives_kinship,
         "nationality_type": existing_row.nationality_type,
         "nationality": existing_row.nationality,
         "residency_status": existing_row.residency_status,
@@ -232,10 +225,8 @@ def build_kyc_dict_from_update(
         "status": existing_row.status,
     }
     merged = {**current, **patch}
-    st = merged["service_type"]
-    manual = override if override is not None else None
-    if override is not None or "service_type" in patch:
-        assigned, by_rule = resolve_assigned_to(str(st), manual, is_admin)
+    if "service_type" in patch:
+        assigned, by_rule = resolve_assigned_to(str(merged["service_type"]))
         merged["assigned_to"] = assigned
         merged["assigned_by_rule"] = by_rule
     merged["updated_by_id"] = user_id

@@ -1,7 +1,11 @@
 import { z } from "zod";
 
+import { KINSHIP_RELATIONS_SET, SERVICE_BRANCHES } from "@/features/kyc/utils/kycFieldOptions";
+
 const YES = "نعم";
 const NO = "لا";
+
+const serviceBranchEnum = z.enum(SERVICE_BRANCHES as unknown as [string, ...string[]]);
 
 export const kycFormSchema = z
   .object({
@@ -10,14 +14,14 @@ export const kycFormSchema = z
     age: z.coerce.number().min(0).max(120),
     passport_job_title: z.string().min(1),
     other_job_title: z.string().optional().nullable(),
-    service_type: z.enum(["بافلي", "ترانس روفر", "أخرى"]),
-    assigned_to_override: z.string().optional().nullable(),
+    service_type: serviceBranchEnum,
     has_bank_statement: z.enum([YES, NO]),
     available_balance: z.string().optional().nullable(),
     expected_balance: z.string().optional().nullable(),
     marital_status: z.enum(["أعزب", "متزوج", "مطلق", "أرمل"]),
     children_count: z.coerce.number().min(0).max(50).optional().nullable(),
     has_relatives_abroad: z.enum([YES, NO]),
+    relatives_kinship: z.string().optional().nullable(),
     nationality_type: z.enum(["مصري", "غير مصري"]),
     nationality: z.string().optional().nullable(),
     residency_status: z.enum([YES, NO]).optional().nullable(),
@@ -164,6 +168,28 @@ export const kycFormSchema = z
         message: "غير مطلوب",
       });
     }
+    if (data.has_relatives_abroad === YES) {
+      const rk = (data.relatives_kinship ?? "").trim();
+      if (!rk) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["relatives_kinship"],
+          message: "مطلوب",
+        });
+      } else if (!KINSHIP_RELATIONS_SET.has(rk)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["relatives_kinship"],
+          message: "قيمة غير صالحة",
+        });
+      }
+    } else if ((data.relatives_kinship ?? "").trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["relatives_kinship"],
+        message: "غير مطلوب",
+      });
+    }
   });
 
 export type KycFormValues = z.infer<typeof kycFormSchema>;
@@ -174,14 +200,14 @@ export const defaultKycValues: KycFormValues = {
   age: 0,
   passport_job_title: "",
   other_job_title: "",
-  service_type: "بافلي",
-  assigned_to_override: "",
+  service_type: SERVICE_BRANCHES[0],
   has_bank_statement: NO,
   available_balance: "",
   expected_balance: "",
   marital_status: "أعزب",
   children_count: undefined,
   has_relatives_abroad: NO,
+  relatives_kinship: "",
   nationality_type: "مصري",
   nationality: "",
   residency_status: undefined,
@@ -201,7 +227,8 @@ export const defaultKycValues: KycFormValues = {
 };
 
 export function assignedPreview(serviceType: string) {
-  if (serviceType === "بافلي") return "أحمد الشيخ";
-  if (serviceType === "ترانس روفر") return "محمود الشيخ";
-  return "— (يمكن للمسؤول التعيين اليدوي)";
+  const s = serviceType.trim();
+  if (s.startsWith("بافلي")) return "أحمد الشيخ";
+  if (s.startsWith("ترانس روفر")) return "محمود الشيخ";
+  return "—";
 }

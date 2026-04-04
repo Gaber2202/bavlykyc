@@ -1,3 +1,4 @@
+import { SERVICE_BRANCHES } from "@/features/kyc/utils/kycFieldOptions";
 import { apiFetch, formatApiErrorMessage } from "@/services/api";
 import type {
   AdminUserRow,
@@ -155,16 +156,18 @@ export function ReportsPage() {
               ))}
             </select>
           </FilterField>
-          <FilterField label="نوع الخدمة">
+          <FilterField label="فرع الخدمة">
             <select
-              className="input-field text-sm max-w-[200px]"
+              className="input-field text-sm max-w-[240px]"
               value={f.serviceType}
               onChange={(e) => f.setServiceType(e.target.value)}
             >
-              <option value="">كل الخدمات</option>
-              <option value="بافلي">بافلي</option>
-              <option value="ترانس روفر">ترانس روفر</option>
-              <option value="أخرى">أخرى</option>
+              <option value="">كل الفروع</option>
+              {SERVICE_BRANCHES.map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
             </select>
           </FilterField>
           <FilterField label="دقة مخطط الاتجاه">

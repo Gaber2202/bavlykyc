@@ -1,3 +1,4 @@
+import { SERVICE_BRANCHES } from "@/features/kyc/utils/kycFieldOptions";
 import { fetchAllKycForExport, downloadKycExcel } from "@/features/kyc/utils/kycExcelExport";
 import {
   buildKycListQueryParams,
@@ -138,7 +139,7 @@ export function KycListPage() {
     () => [
       col.accessor("client_full_name", { header: "العميل" }),
       col.accessor("phone_number", { header: "الهاتف" }),
-      col.accessor("service_type", { header: "الخدمة" }),
+      col.accessor("service_type", { header: "فرع الخدمة" }),
       col.accessor("status", { header: "الحالة" }),
       col.accessor("assigned_to", { header: "المكلف" }),
       col.accessor("employee_name", { header: "الموظف" }),
@@ -244,10 +245,12 @@ export function KycListPage() {
                 setPage(1);
               }}
             >
-              <option value="">كل الخدمات</option>
-              <option value="بافلي">بافلي</option>
-              <option value="ترانس روفر">ترانس روفر</option>
-              <option value="أخرى">أخرى</option>
+              <option value="">كل الفروع</option>
+              {SERVICE_BRANCHES.map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
             </select>
           </label>
           <label className="block text-xs text-gold-500">

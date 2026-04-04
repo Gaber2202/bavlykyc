@@ -30,7 +30,7 @@ class KYCRecord(Base):
     passport_job_title: Mapped[str] = mapped_column(String(255))
     other_job_title: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
-    service_type: Mapped[str] = mapped_column(String(50), index=True)
+    service_type: Mapped[str] = mapped_column(String(80), index=True)
     assigned_to: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
     assigned_by_rule: Mapped[bool] = mapped_column(default=True)
 
@@ -46,6 +46,7 @@ class KYCRecord(Base):
     children_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     has_relatives_abroad: Mapped[str] = mapped_column(String(10))
+    relatives_kinship: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
     nationality_type: Mapped[str] = mapped_column(String(20), index=True)
     nationality: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
     residency_status: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
