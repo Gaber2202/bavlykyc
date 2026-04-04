@@ -1,5 +1,6 @@
-import { useAuthStore } from "@/stores/authStore";
+import { BavlyTravelLogo } from "@/shared/components/BavlyTravelLogo";
 import { cn } from "@/shared/lib/cn";
+import { useAuthStore } from "@/stores/authStore";
 import { NavLink } from "react-router-dom";
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
@@ -18,10 +19,12 @@ export function Sidebar() {
 
   return (
     <aside className="w-64 shrink-0 border-l border-gold-700/25 bg-gradient-to-b from-ink-100/95 to-ink/98 flex flex-col min-h-screen">
-      <div className="p-4 border-b border-gold-800/30">
-        <div className="text-[10px] uppercase tracking-[0.2em] text-gold-500">Bavly</div>
-        <div className="text-lg font-bold text-gold-200 mt-0.5">مركز KYC</div>
-        <p className="text-[11px] text-gold-600 mt-1 leading-snug">إدارة الاعرف عميلك</p>
+      <div className="p-3 border-b border-gold-800/30 space-y-3">
+        <BavlyTravelLogo variant="sidebar" className="w-full" />
+        <div>
+          <div className="text-lg font-bold text-gold-200 leading-tight">مركز KYC</div>
+          <p className="text-[11px] text-gold-600 mt-1 leading-snug">إدارة الاعرف عميلك</p>
+        </div>
       </div>
 
       <nav className="flex-1 p-3 flex flex-col gap-5 overflow-y-auto">

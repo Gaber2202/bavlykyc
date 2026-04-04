@@ -1,3 +1,4 @@
+import { BavlyTravelLogo } from "@/shared/components/BavlyTravelLogo";
 import {
   formatApiErrorMessage,
   loginRequest,
@@ -40,12 +41,13 @@ export function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
       <div className="w-full max-w-md glass-panel p-8 space-y-6">
-        <div className="text-center space-y-2">
-          <div className="text-xs uppercase tracking-[0.35em] text-gold-500">
-            Bavly KYC
+        <div className="text-center space-y-4">
+          <BavlyTravelLogo variant="login" className="mx-auto w-full max-w-[280px]" />
+          <div className="space-y-2 pt-1">
+            <div className="text-xs uppercase tracking-[0.35em] text-gold-500">Bavly KYC</div>
+            <h1 className="text-2xl font-bold text-gold-200">تسجيل الدخول</h1>
+            <p className="text-sm text-gold-400">نظام إدارة اعرف عميلك الداخلي</p>
           </div>
-          <h1 className="text-2xl font-bold text-gold-200">تسجيل الدخول</h1>
-          <p className="text-sm text-gold-400">نظام إدارة اعرف عميلك الداخلي</p>
         </div>
         <form className="space-y-4" onSubmit={(e) => void onSubmit(e)}>
           <label className="block text-sm">
