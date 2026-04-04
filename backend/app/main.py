@@ -17,6 +17,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.api.deps import limiter
 from app.api.v1.router import api_router
+from app.core.api_contract import API_CONTRACT_LABEL
 from app.core.config import settings
 from app.db.session import get_db
 from app.middleware.security_headers import SecurityHeadersMiddleware
@@ -90,7 +91,7 @@ def create_app() -> FastAPI:
     @app.get("/health", tags=["health"])
     async def health() -> dict[str, str]:
         """Liveness: process is up (use for load balancer pings)."""
-        return {"status": "ok"}
+        return {"status": "ok", "api_contract": API_CONTRACT_LABEL}
 
     @app.get("/health/ready", tags=["health"])
     async def health_ready(

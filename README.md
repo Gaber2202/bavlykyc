@@ -457,6 +457,7 @@ docker compose -f docker-compose.vps.example.yml --env-file .env logs api --tail
 | `api` **Restarting**; logs show OOM or worker boot errors | Small VPS: set `WEB_CONCURRENCY=1` in `deploy/.env` and `up -d --build` again. |
 | Compose error `set SECRET_KEY in deploy/.env` | Run with `--env-file .env` from `deploy/`, or ensure those variables exist in `.env` (no typos). |
 | **422** saving KYC: `service_type` not one of the four branches (`بافلي الاسكندرية`, `بافلي القاهرة`, `ترانس روفر الاسكندرية`, `ترانس روفر القاهرة`), kinship errors, or **`relatives_kinship: Extra inputs are not permitted`** | **Stale API code/image** (old literals / no `relatives_kinship` column). **Rebuild and recreate `api`**, run **`alembic upgrade head`**. Locally verify schema: `cd backend && PYTHONPATH=. python -m unittest discover -s tests -p 'test_*.py' -v`. |
+| VPS works locally but errors mention **`بافلي`/`ترانس روفر`/`أخرى`** and **Extra inputs** for `assigned_to` / `relatives_kinship` | The **container on the server is still old**. From `deploy/`: `git -C .. log -1 --oneline` then **`docker compose -f docker-compose.vps.example.yml --env-file .env build --no-cache api`** and **`up -d --force-recreate api`**. Verify: **`curl -sS http://127.0.0.1:8000/health`** must include **`"api_contract":"KYC_V2_four_branches_assignee_kinship"`**. Or run **`./verify-vps-api-image.sh`** (same directory). |
 
 **One-off API foreground run** (see the crash without restart loop):
 
