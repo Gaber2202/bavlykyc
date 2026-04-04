@@ -453,6 +453,7 @@ docker compose -f docker-compose.vps.example.yml --env-file .env logs api --tail
 | `api` **Exited** with pydantic / `ValidationError` | Missing or invalid `SECRET_KEY` (min 32 chars), `DATABASE_URL`, or `CORS_ORIGINS` in `deploy/.env`. |
 | `api` **Restarting**; logs show OOM or worker boot errors | Small VPS: set `WEB_CONCURRENCY=1` in `deploy/.env` and `up -d --build` again. |
 | Compose error `set SECRET_KEY in deploy/.env` | Run with `--env-file .env` from `deploy/`, or ensure those variables exist in `.env` (no typos). |
+| **422** saving KYC: `service_type` must be `بافلي`/`ترانس روفر`/`أخرى`, or **`relatives_kinship: Extra inputs are not permitted`** | The **API container is an old image** (before فرع الخدمة + صلة القرابة). **Rebuild and recreate `api`**, run **`alembic upgrade head`**, and confirm `git log -1` on the server includes that feature. The **web** and **api** images must both match `main`. |
 
 **One-off API foreground run** (see the crash without restart loop):
 
