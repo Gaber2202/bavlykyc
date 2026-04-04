@@ -16,6 +16,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY alembic.ini ./
 COPY alembic ./alembic
+# Bump KYC_SCHEMA_BUILD (and compose image tag) when KYC request bodies change — busts stale COPY cache on VPS.
+ARG KYC_SCHEMA_BUILD=4
+LABEL org.bavlykyc.kyc-schema-build="${KYC_SCHEMA_BUILD}"
 COPY app ./app
 COPY scripts ./scripts
 

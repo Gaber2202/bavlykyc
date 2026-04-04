@@ -354,7 +354,7 @@ Use this if anything was skipped or the stack is half-installed.
 | 4 | Repo at **`/opt/BavlyKYC`** (`git clone` §14.2) and **`git pull`** for latest. | ☐ |
 | 5 | **`/opt/BavlyKYC/deploy/.env`** exists (copy from `vps.bavlykyc.env.example`); includes **`SECRET_KEY`** (≥32 chars), **`DATABASE_URL`** / **`DATABASE_URL_SYNC`**, **`POSTGRES_PASSWORD`**, **`CORS_ORIGINS`**. **`VITE_API_BASE_URL`** is optional (omit = bundle uses same-origin **`/api/v1`**). | ☐ |
 | 6 | **Host nginx** §14.3 — site enabled, `default` removed, `sudo nginx -t` OK, `systemctl reload nginx`. | ☐ |
-| 7 | **Containers:** from `deploy/`, `docker compose -f docker-compose.vps.example.yml --env-file .env up -d --build` — `docker compose ... ps` shows **db**, **api**, **web** **running**. | ☐ |
+| 7 | **Containers:** from `deploy/`, `docker compose -f docker-compose.vps.yml --env-file .env up -d --build` — `docker compose ... ps` shows **db**, **api**, **web** **running**. | ☐ |
 | 8 | **Migrations** (once per empty DB): §14.4 `alembic upgrade head`. | ☐ |
 | 9 | **Admin seed** (once): §14.4 `seed_admin.py`. | ☐ |
 | 10 | **Verify** §14.5: `curl` health URLs + browser login. If `api` is not up, §14.7. | ☐ |
@@ -397,20 +397,22 @@ sudo nginx -t && sudo systemctl reload nginx
 
 ```bash
 cd /opt/BavlyKYC/deploy
-docker compose -f docker-compose.vps.example.yml --env-file .env up -d --build
+docker compose -f docker-compose.vps.yml --env-file .env up -d --build
 ```
+
+**After `git pull` (recommended — avoids stale API images):** from `deploy/`, run **`chmod +x vps-redeploy.sh && ./vps-redeploy.sh`**. That rebuilds **`api`** and **`web`** with **`--no-cache`**, recreates containers, and runs **`alembic upgrade head`**. Compose uses **fixed image names** (`bavlykyc-api:kyc-schema-v4`, etc.) so Docker does not keep serving an old anonymous `*-api` layer with pre-v2 KYC validation.
 
 **First-time schema** (once per empty database):
 
 ```bash
 cd /opt/BavlyKYC/deploy
-docker compose -f docker-compose.vps.example.yml --env-file .env run --rm api sh -c 'cd /app && alembic upgrade head'
+docker compose -f docker-compose.vps.yml --env-file .env run --rm api sh -c 'cd /app && alembic upgrade head'
 ```
 
 **Seed admin** (once):
 
 ```bash
-docker compose -f docker-compose.vps.example.yml --env-file .env exec api \
+docker compose -f docker-compose.vps.yml --env-file .env exec api \
   sh -c 'cd /app && ADMIN_USERNAME=admin ADMIN_PASSWORD="YourStrongPassword" PYTHONPATH=/app python scripts/seed_admin.py'
 ```
 
@@ -429,13 +431,15 @@ Open `http://187.127.142.186` in a browser and sign in. If the UI cannot reach t
 cd /path/to/BavlyKYC
 chmod +x scripts/sync-to-vps.example.sh
 ./scripts/sync-to-vps.example.sh
-ssh root@187.127.142.186 'cd /opt/BavlyKYC/deploy && docker compose -f docker-compose.vps.example.yml --env-file .env up -d --build'
+ssh root@187.127.142.186 'cd /opt/BavlyKYC/deploy && chmod +x vps-redeploy.sh && ./vps-redeploy.sh'
 ```
 
 | File | Role |
 |------|------|
 | `deploy/vps.bavlykyc.env.example` | Copy to `deploy/.env` on the server |
-| `deploy/docker-compose.vps.example.yml` | `db` + `api` + `web` (API/web on `127.0.0.1` only) |
+| `deploy/docker-compose.vps.yml` | `db` + `api` + `web`; **versioned `image:`** for api/web (avoids stale schema) |
+| `deploy/docker-compose.vps.example.yml` | Same content as above (legacy `-f` name) |
+| `deploy/vps-redeploy.sh` | Hard rebuild api + web + migrations after `git pull` |
 | `deploy/nginx.vps-ip-path.example.conf` | Host nginx for `187.127.142.186` |
 | `scripts/sync-to-vps.example.sh` | `rsync` to `root@187.127.142.186:/opt/BavlyKYC` |
 
@@ -445,9 +449,9 @@ Run **from** `/opt/BavlyKYC/deploy` (so `deploy/.env` and paths resolve):
 
 ```bash
 cd /opt/BavlyKYC/deploy
-docker compose -f docker-compose.vps.example.yml --env-file .env ps -a
-docker compose -f docker-compose.vps.example.yml --env-file .env logs db --tail 80
-docker compose -f docker-compose.vps.example.yml --env-file .env logs api --tail 120
+docker compose -f docker-compose.vps.yml --env-file .env ps -a
+docker compose -f docker-compose.vps.yml --env-file .env logs db --tail 80
+docker compose -f docker-compose.vps.yml --env-file .env logs api --tail 120
 ```
 
 | Symptom | Likely cause |
@@ -457,13 +461,13 @@ docker compose -f docker-compose.vps.example.yml --env-file .env logs api --tail
 | `api` **Restarting**; logs show OOM or worker boot errors | Small VPS: set `WEB_CONCURRENCY=1` in `deploy/.env` and `up -d --build` again. |
 | Compose error `set SECRET_KEY in deploy/.env` | Run with `--env-file .env` from `deploy/`, or ensure those variables exist in `.env` (no typos). |
 | **422** saving KYC: `service_type` not one of the four branches (`بافلي الاسكندرية`, `بافلي القاهرة`, `ترانس روفر الاسكندرية`, `ترانس روفر القاهرة`), kinship errors, or **`relatives_kinship: Extra inputs are not permitted`** | **Stale API code/image** (old literals / no `relatives_kinship` column). **Rebuild and recreate `api`**, run **`alembic upgrade head`**. Locally verify schema: `cd backend && PYTHONPATH=. python -m unittest discover -s tests -p 'test_*.py' -v`. |
-| VPS works locally but errors mention **`بافلي`/`ترانس روفر`/`أخرى`** and **Extra inputs** for `assigned_to` / `relatives_kinship` | The **container on the server is still old**. From `deploy/`: `git -C .. log -1 --oneline` then **`docker compose -f docker-compose.vps.example.yml --env-file .env build --no-cache api`** and **`up -d --force-recreate api`**. Verify: **`curl -sS http://127.0.0.1:8000/health`** must include **`"api_contract":"KYC_V2_four_branches_assignee_kinship"`**. Or run **`./verify-vps-api-image.sh`** (same directory). |
+| VPS works locally but errors mention **`بافلي`/`ترانس روفر`/`أخرى`** and **Extra inputs** for `assigned_to` / `relatives_kinship` | **Stale `api` image** (often an old anonymous Compose image). **`git pull`**, then from `deploy/` run **`./vps-redeploy.sh`**. Bump **`BAVLYKYC_API_TAG`** in `.env` (e.g. `kyc-schema-v5`) if a normal rebuild still serves old code — forces a new image name. Verify: **`curl -sS http://127.0.0.1:8000/health`** includes **`api_contract`**, or **`./verify-vps-api-image.sh`**. |
 
 **One-off API foreground run** (see the crash without restart loop):
 
 ```bash
 cd /opt/BavlyKYC/deploy
-docker compose -f docker-compose.vps.example.yml --env-file .env run --rm --no-deps --service-ports api \
+docker compose -f docker-compose.vps.yml --env-file .env run --rm --no-deps --service-ports api \
   sh -c 'gunicorn app.main:app -k uvicorn.workers.UvicornWorker -w 1 -b 0.0.0.0:8000 --access-logfile - --error-logfile -'
 ```
 
@@ -477,17 +481,17 @@ Usually the server is fine but the **browser** keeps an old **`index.html`**, so
 cd /opt/BavlyKYC
 git pull origin main
 cd deploy
-docker compose -f docker-compose.vps.example.yml --env-file .env build --no-cache web
-docker compose -f docker-compose.vps.example.yml --env-file .env up -d --force-recreate web
+docker compose -f docker-compose.vps.yml --env-file .env build --no-cache web
+docker compose -f docker-compose.vps.yml --env-file .env up -d --force-recreate web
 # If backend changed too:
-docker compose -f docker-compose.vps.example.yml --env-file .env build --no-cache api
-docker compose -f docker-compose.vps.example.yml --env-file .env up -d --force-recreate api
+docker compose -f docker-compose.vps.yml --env-file .env build --no-cache api
+docker compose -f docker-compose.vps.yml --env-file .env up -d --force-recreate api
 ```
 
 **Verify the new bundle is live** (filename changes after each Vite build):
 
 ```bash
-docker compose -f docker-compose.vps.example.yml --env-file .env exec web \
+docker compose -f docker-compose.vps.yml --env-file .env exec web \
   sh -c 'grep -o "assets/index-[^\"]*\\.js" /usr/share/nginx/html/index.html | head -1'
 curl -sS http://127.0.0.1:8080/ | grep -o 'assets/index-[^"]*\.js' | head -1
 ```
@@ -534,7 +538,7 @@ deploy/
   nginx.reverse-proxy.example.conf
   nginx.vps-ip-path.example.conf   # HTTP + path routing for 187.127.142.186
   docker-compose.prod.example.yml
-  docker-compose.vps.example.yml   # db + api + web for Hostinger VPS
+  docker-compose.vps.yml   # db + api + web for Hostinger VPS
   vps.bavlykyc.env.example         # env template for that VPS
 
 docker-compose.yml     # local dev (db + api + vite)

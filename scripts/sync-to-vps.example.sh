@@ -23,4 +23,4 @@ rsync -avz --delete \
   "$ROOT/" "${VPS}:${REMOTE_DIR}/"
 
 echo "Synced to ${VPS}:${REMOTE_DIR}"
-echo "On server: cd ${REMOTE_DIR}/deploy && docker compose -f docker-compose.vps.example.yml --env-file .env up -d --build"
+echo "On server: cd ${REMOTE_DIR}/deploy && ./vps-redeploy.sh"

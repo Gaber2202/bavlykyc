@@ -8,7 +8,8 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-COMPOSE=(docker compose -f docker-compose.vps.example.yml --env-file .env)
+COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.vps.yml}"
+COMPOSE=(docker compose -f "$COMPOSE_FILE" --env-file .env)
 
 echo "=== GET /health (via published port on host) ==="
 curl -sS "http://127.0.0.1:8000/health" || true

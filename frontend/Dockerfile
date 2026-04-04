@@ -13,6 +13,10 @@ COPY . .
 ARG VITE_API_BASE_URL=
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
+# Bump with backend KYC_SCHEMA_BUILD when SPA/API contract changes (busts build cache).
+ARG WEB_ASSETS_BUILD=4
+LABEL org.bavlykyc.web-assets-build="${WEB_ASSETS_BUILD}"
+
 RUN npm run build
 
 FROM nginxinc/nginx-unprivileged:1.27-alpine

@@ -1,8 +1,13 @@
-# Same stack as docker-compose.vps.yml (duplicate for older docs / -f docker-compose.vps.example.yml).
-# Versioned `image:` names avoid stale anonymous images with old KYC validation.
+# Canonical VPS stack (Hostinger / bare IP). docker-compose.vps.example.yml is a duplicate for legacy `-f` names.
 #
-#   docker compose -f docker-compose.vps.example.yml --env-file .env up -d --build
-# Prefer docker-compose.vps.yml + ./vps-redeploy.sh after git pull.
+# Versioned `image:` names prevent Docker from reusing anonymous old `*-api` images that still
+# contain pre–four-branch KYC schemas (the source of "بافلي/ترانس روفر/أخرى" 422 errors).
+#
+#   cd /opt/BavlyKYC/deploy
+#   docker compose -f docker-compose.vps.yml --env-file .env up -d --build
+#
+# One-shot hard rebuild (run after git pull):
+#   ./vps-redeploy.sh
 
 services:
   db:
