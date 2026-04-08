@@ -513,7 +513,7 @@ curl -sS http://127.0.0.1:8080/ | grep -o 'assets/index-[^"]*\.js' | head -1
 ## Feature overview (delivered)
 
 - Auth: Argon2, JWT access + DB-backed refresh rotation, rate limits, inactive users.
-- KYC CRUD with conditional validation, soft delete (admin), audit trail.
+- KYC CRUD with conditional validation, soft delete (admin), audit trail (includes أملاك / حساب دولاري / حساب بنكي مصري / سجل تجاري وبطاقة ضريبية — migration `0006`).
 - Admin: users, analytics, audit log.
 - Frontend: RTL Arabic UI, feature-based layout, role-aware navigation.
 

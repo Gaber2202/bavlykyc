@@ -48,6 +48,11 @@ export interface KYCRecordDto {
   has_bank_statement: string;
   available_balance: string | null;
   expected_balance: string | null;
+  has_property_assets: string;
+  property_assets_detail: string | null;
+  has_usd_account: string;
+  has_bank_account: string;
+  has_commercial_register_and_tax_card: string;
   marital_status: string;
   children_count: number | null;
   has_relatives_abroad: string;

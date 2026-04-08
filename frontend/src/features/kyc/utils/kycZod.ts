@@ -32,6 +32,11 @@ export const kycFormSchema = z
     has_bank_statement: z.enum([YES, NO]),
     available_balance: z.string().optional().nullable(),
     expected_balance: z.string().optional().nullable(),
+    has_property_assets: z.enum([YES, NO]),
+    property_assets_detail: z.string().optional().nullable(),
+    has_usd_account: z.enum([YES, NO]),
+    has_bank_account: z.enum([YES, NO]),
+    has_commercial_register_and_tax_card: z.enum([YES, NO]),
     marital_status: z.enum(["أعزب", "متزوج", "مطلق", "أرمل"]),
     children_count: z.coerce.number().min(0).max(50).optional().nullable(),
     has_relatives_abroad: z.enum([YES, NO]),
@@ -91,6 +96,21 @@ export const kycFormSchema = z
           message: "يجب إفراغ الحقل",
         });
       }
+    }
+    if (data.has_property_assets === YES) {
+      if (!(data.property_assets_detail ?? "").trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["property_assets_detail"],
+          message: "مطلوب",
+        });
+      }
+    } else if ((data.property_assets_detail ?? "").trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["property_assets_detail"],
+        message: "غير مطلوب",
+      });
     }
     if (data.marital_status === "متزوج") {
       if (data.children_count === null || data.children_count === undefined) {
@@ -219,6 +239,11 @@ export const defaultKycValues: KycFormValues = {
   has_bank_statement: NO,
   available_balance: "",
   expected_balance: "",
+  has_property_assets: NO,
+  property_assets_detail: "",
+  has_usd_account: NO,
+  has_bank_account: NO,
+  has_commercial_register_and_tax_card: NO,
   marital_status: "أعزب",
   children_count: undefined,
   has_relatives_abroad: NO,

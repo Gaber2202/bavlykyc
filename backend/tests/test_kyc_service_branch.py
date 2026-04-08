@@ -24,6 +24,11 @@ def _minimal_create(**overrides: object) -> dict:
         "has_bank_statement": "لا",
         "available_balance": None,
         "expected_balance": Decimal("1000"),
+        "has_property_assets": "لا",
+        "property_assets_detail": None,
+        "has_usd_account": "لا",
+        "has_bank_account": "لا",
+        "has_commercial_register_and_tax_card": "لا",
         "marital_status": "أعزب",
         "children_count": None,
         "has_relatives_abroad": "لا",
@@ -114,6 +119,45 @@ class TestKycServiceBranch(unittest.TestCase):
                 {**_minimal_create(), "assigned_to": "غير معروف"},
             )
         self.assertTrue(any(e.get("loc") == ("assigned_to",) for e in ctx.exception.errors()))
+
+    def test_property_assets_detail_required_when_yes(self) -> None:
+        with self.assertRaises(ValidationError) as ctx:
+            KYCCreate.model_validate(
+                _minimal_create(
+                    has_property_assets="نعم",
+                    property_assets_detail=None,
+                )
+            )
+        self.assertIn("الأملاك", str(ctx.exception))
+
+    def test_property_assets_detail_rejected_when_no(self) -> None:
+        with self.assertRaises(ValidationError) as ctx:
+            KYCCreate.model_validate(
+                _minimal_create(
+                    has_property_assets="لا",
+                    property_assets_detail="شقة بالقاهرة",
+                )
+            )
+        self.assertIn("الأملاك", str(ctx.exception))
+
+    def test_property_detail_stored_when_yes(self) -> None:
+        payload = KYCCreate.model_validate(
+            _minimal_create(
+                has_property_assets="نعم",
+                property_assets_detail="أرض زراعية",
+            )
+        )
+        d = build_kyc_dict_from_create(
+            payload, user_id="00000000-0000-0000-0000-000000000001", is_admin=True
+        )
+        self.assertEqual(d["property_assets_detail"], "أرض زراعية")
+
+    def test_property_detail_cleared_when_no(self) -> None:
+        payload = KYCCreate.model_validate(_minimal_create(has_property_assets="لا"))
+        d = build_kyc_dict_from_create(
+            payload, user_id="00000000-0000-0000-0000-000000000001", is_admin=True
+        )
+        self.assertIsNone(d["property_assets_detail"])
 
 
 if __name__ == "__main__":

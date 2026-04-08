@@ -1,4 +1,5 @@
 import { KYC_ASSIGNEES, SERVICE_BRANCHES } from "@/features/kyc/utils/kycFieldOptions";
+import type { KYCRecordDto } from "@/types/api";
 import { assignedPreview, type KycFormValues } from "./kycZod";
 
 function normalizeServiceBranchForForm(raw: string): KycFormValues["service_type"] {
@@ -31,6 +32,14 @@ export function toCreatePayload(values: KycFormValues) {
       values.has_bank_statement === "نعم" ? num(values.available_balance) : null,
     expected_balance:
       values.has_bank_statement === "لا" ? num(values.expected_balance) : null,
+    has_property_assets: values.has_property_assets,
+    property_assets_detail:
+      values.has_property_assets === "نعم"
+        ? values.property_assets_detail?.trim() || null
+        : null,
+    has_usd_account: values.has_usd_account,
+    has_bank_account: values.has_bank_account,
+    has_commercial_register_and_tax_card: values.has_commercial_register_and_tax_card,
     marital_status: values.marital_status,
     children_count:
       values.marital_status === "متزوج" ? values.children_count ?? null : null,
@@ -61,39 +70,7 @@ export function toCreatePayload(values: KycFormValues) {
   };
 }
 
-export function recordToFormDefaults(r: {
-  employee_name: string;
-  client_full_name: string;
-  age: number;
-  passport_job_title: string;
-  other_job_title: string | null;
-  service_type: string;
-  /** Stored assignee; falls back to rule default from service branch when missing. */
-  assigned_to: string | null;
-  has_bank_statement: string;
-  available_balance: string | null;
-  expected_balance: string | null;
-  marital_status: string;
-  children_count: number | null;
-  has_relatives_abroad: string;
-  relatives_kinship: string | null;
-  nationality_type: string;
-  nationality: string | null;
-  residency_status: string | null;
-  governorate: string;
-  consultation_method: string;
-  email: string;
-  phone_number: string;
-  whatsapp_number: string;
-  previous_rejected: string;
-  rejection_numbers: string | null;
-  rejection_reason: string | null;
-  rejection_country: string | null;
-  has_previous_visas: string;
-  previous_visa_countries: string | null;
-  recommendation: string | null;
-  status: string;
-}): Partial<KycFormValues> {
+export function recordToFormDefaults(r: KYCRecordDto): Partial<KycFormValues> {
   return {
     employee_name: r.employee_name,
     client_full_name: r.client_full_name,
@@ -120,6 +97,11 @@ export function recordToFormDefaults(r: {
       r.expected_balance != null && r.expected_balance !== ""
         ? String(r.expected_balance)
         : "",
+    has_property_assets: r.has_property_assets as KycFormValues["has_property_assets"],
+    property_assets_detail: r.property_assets_detail ?? "",
+    has_usd_account: r.has_usd_account as KycFormValues["has_usd_account"],
+    has_bank_account: r.has_bank_account as KycFormValues["has_bank_account"],
+    has_commercial_register_and_tax_card: r.has_commercial_register_and_tax_card as KycFormValues["has_commercial_register_and_tax_card"],
     marital_status: r.marital_status as KycFormValues["marital_status"],
     children_count: r.children_count ?? undefined,
     has_relatives_abroad: r.has_relatives_abroad as KycFormValues["has_relatives_abroad"],

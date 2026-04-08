@@ -16,13 +16,32 @@ function isLocalApiHost(url: string): boolean {
   }
 }
 
+const LOCAL_API_BASE_RE =
+  /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/api\/v1\/?$/i;
+
 /**
  * API base for `fetch`. Dev → localhost backend. Prod empty VITE → same-origin `/api/v1`.
+ * Prod builds often copy `.env.example` and bake `http://localhost:8000/api/v1`; the browser
+ * on a VPS cannot reach that — treat it as unset so requests use `/api/v1` behind nginx.
  * If a prod bundle was wrongly baked with localhost but the page is opened from another
  * host (e.g. VPS IP), use that page's origin so nginx path routing still works.
  */
 function resolveApiBase(): string {
-  const rawBase = import.meta.env.VITE_API_BASE_URL?.trim();
+  let rawBase = import.meta.env.VITE_API_BASE_URL?.trim() ?? "";
+  if (!import.meta.env.DEV && rawBase && LOCAL_API_BASE_RE.test(rawBase.replace(/\/$/, ""))) {
+    const origin = browserOrigin();
+    let pageHost = "";
+    try {
+      pageHost = origin ? new URL(origin).hostname : "";
+    } catch {
+      pageHost = "";
+    }
+    const fromLoopback = pageHost === "localhost" || pageHost === "127.0.0.1";
+    if (!fromLoopback) {
+      rawBase = "";
+    }
+  }
+
   let resolved = rawBase
     ? rawBase.replace(/\/$/, "")
     : import.meta.env.DEV
@@ -217,12 +236,17 @@ export function formatApiErrorMessage(err: unknown): string {
       (base.includes("localhost") || base.includes("127.0.0.1")) &&
       !pageOrigin.includes("localhost") &&
       !pageOrigin.includes("127.0.0.1");
+    const baseHint =
+      base.startsWith("http") || base.startsWith("//")
+        ? base
+        : `${pageOrigin ?? "(أصل الصفحة)"}${base}`;
     const lines = [
       "تعذر الاتصال بالخادم (الشبكة أو سياسة المتصفح).",
+      "• على الخادم (nginx + مسار /api/v1): اترك VITE_API_BASE_URL فارغاً عند بناء الواجهة — لا تستخدم localhost في الإنتاج.",
       "• أعد بناء الواجهة بعد تعديل VITE_API_BASE_URL (يُثبت وقت البناء فقط).",
       "• إن فتحت الموقع بـ https والـ API بـ http يمنع المتصفح الطلب (محتوى مختلط) — استخدم نفس البروتوكول أو TLS للـ API.",
       "• في الخادم: CORS_ORIGINS يجب أن يتضمن أصل الصفحة بالضبط (مثال: http://187.127.142.186 بدون شرطة مائلة في النهاية).",
-      `• العنوان الحالي للـ API في هذه البنية: ${base}`,
+      `• العنوان الفعلي للطلبات في هذه الجلسة: ${baseHint}`,
     ];
     if (localhostMismatch) {
       lines.splice(

@@ -35,7 +35,7 @@ services:
       context: ../backend
       dockerfile: Dockerfile
       args:
-        KYC_SCHEMA_BUILD: ${KYC_SCHEMA_BUILD:-5}
+        KYC_SCHEMA_BUILD: ${KYC_SCHEMA_BUILD:-6}
     restart: unless-stopped
     env_file:
       - .env
@@ -70,7 +70,7 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
-        WEB_ASSETS_BUILD: ${WEB_ASSETS_BUILD:-5}
+        WEB_ASSETS_BUILD: ${WEB_ASSETS_BUILD:-6}
     restart: unless-stopped
     ports:
       - "127.0.0.1:8080:8080"

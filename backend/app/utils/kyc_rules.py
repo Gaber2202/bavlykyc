@@ -34,6 +34,14 @@ def validate_kyc_conditional_fields(data: dict[str, Any]) -> list[str]:
         if data.get("available_balance") is not None:
             errors.append("يجب عدم إدخال الرصيد المتاح عند لا لكشف الحساب")
 
+    hpa = data.get("has_property_assets")
+    if hpa == YES:
+        if not (data.get("property_assets_detail") or "").strip():
+            errors.append("تفاصيل الأملاك مطلوبة عند اختيار نعم لوجود أملاك")
+    else:
+        if data.get("property_assets_detail"):
+            errors.append("تفاصيل الأملاك غير مطلوبة عند لا لوجود أملاك")
+
     ms = data.get("marital_status")
     if ms == "متزوج":
         if data.get("children_count") is None:
@@ -118,5 +126,8 @@ def clear_conditional_fields_for_write(data: dict[str, Any]) -> dict[str, Any]:
 
     if out.get("has_relatives_abroad") != YES:
         out["relatives_kinship"] = None
+
+    if out.get("has_property_assets") != YES:
+        out["property_assets_detail"] = None
 
     return out

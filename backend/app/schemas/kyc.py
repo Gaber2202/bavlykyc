@@ -38,6 +38,12 @@ class KYCBaseFields(StrictInputModel):
     available_balance: Decimal | None = None
     expected_balance: Decimal | None = None
 
+    has_property_assets: YesNoLiteral
+    property_assets_detail: str | None = Field(None, max_length=4000)
+    has_usd_account: YesNoLiteral
+    has_bank_account: YesNoLiteral
+    has_commercial_register_and_tax_card: YesNoLiteral
+
     marital_status: MaritalLiteral
     children_count: int | None = Field(None, ge=0, le=50)
 
@@ -88,6 +94,11 @@ class KYCUpdate(StrictInputModel):
     has_bank_statement: YesNoLiteral | None = None
     available_balance: Decimal | None = None
     expected_balance: Decimal | None = None
+    has_property_assets: YesNoLiteral | None = None
+    property_assets_detail: str | None = Field(None, max_length=4000)
+    has_usd_account: YesNoLiteral | None = None
+    has_bank_account: YesNoLiteral | None = None
+    has_commercial_register_and_tax_card: YesNoLiteral | None = None
     marital_status: MaritalLiteral | None = None
     children_count: int | None = Field(None, ge=0, le=50)
     has_relatives_abroad: YesNoLiteral | None = None
@@ -130,6 +141,11 @@ class KYCRead(APIModel):
     has_bank_statement: str
     available_balance: Decimal | None
     expected_balance: Decimal | None
+    has_property_assets: str
+    property_assets_detail: str | None
+    has_usd_account: str
+    has_bank_account: str
+    has_commercial_register_and_tax_card: str
     marital_status: str
     children_count: int | None
     has_relatives_abroad: str
@@ -206,6 +222,11 @@ def build_kyc_dict_from_update(
         "has_bank_statement": existing_row.has_bank_statement,
         "available_balance": existing_row.available_balance,
         "expected_balance": existing_row.expected_balance,
+        "has_property_assets": existing_row.has_property_assets,
+        "property_assets_detail": existing_row.property_assets_detail,
+        "has_usd_account": existing_row.has_usd_account,
+        "has_bank_account": existing_row.has_bank_account,
+        "has_commercial_register_and_tax_card": existing_row.has_commercial_register_and_tax_card,
         "marital_status": existing_row.marital_status,
         "children_count": existing_row.children_count,
         "has_relatives_abroad": existing_row.has_relatives_abroad,

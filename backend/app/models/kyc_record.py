@@ -42,6 +42,12 @@ class KYCRecord(Base):
         Numeric(14, 2), nullable=True
     )
 
+    has_property_assets: Mapped[str] = mapped_column(String(10))
+    property_assets_detail: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    has_usd_account: Mapped[str] = mapped_column(String(10))
+    has_bank_account: Mapped[str] = mapped_column(String(10))
+    has_commercial_register_and_tax_card: Mapped[str] = mapped_column(String(10))
+
     marital_status: Mapped[str] = mapped_column(String(20))
     children_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 

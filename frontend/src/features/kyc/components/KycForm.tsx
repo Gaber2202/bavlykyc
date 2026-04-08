@@ -35,6 +35,7 @@ export function KycForm({ defaultValues, submitLabel, onSubmit, disabled }: Prop
   }, [lockedEmployeeName, form]);
 
   const hbs = form.watch("has_bank_statement");
+  const hasProp = form.watch("has_property_assets");
   const marital = form.watch("marital_status");
   const nat = form.watch("nationality_type");
   const prevRej = form.watch("previous_rejected");
@@ -176,6 +177,47 @@ export function KycForm({ defaultValues, submitLabel, onSubmit, disabled }: Prop
               <input className="input-field" dir="ltr" {...form.register("expected_balance")} />
             </Field>
           )}
+          <Field label="هل يوجد أملاك؟" error={form.formState.errors.has_property_assets}>
+            <select className="input-field" {...form.register("has_property_assets")}>
+              <option value="نعم">نعم</option>
+              <option value="لا">لا</option>
+            </select>
+          </Field>
+          {hasProp === "نعم" && (
+            <div className="md:col-span-2">
+              <Field label="تفاصيل الأملاك" error={form.formState.errors.property_assets_detail}>
+                <textarea
+                  className="input-field min-h-[88px] resize-y"
+                  rows={3}
+                  {...form.register("property_assets_detail")}
+                />
+              </Field>
+            </div>
+          )}
+          <Field label="هل يوجد حساب دولاري؟" error={form.formState.errors.has_usd_account}>
+            <select className="input-field" {...form.register("has_usd_account")}>
+              <option value="نعم">نعم</option>
+              <option value="لا">لا</option>
+            </select>
+          </Field>
+          <Field
+            label="هل يوجد حساب بنكي مصري؟ (وجود حساب، وليس كشف الحساب)"
+            error={form.formState.errors.has_bank_account}
+          >
+            <select className="input-field" {...form.register("has_bank_account")}>
+              <option value="نعم">نعم</option>
+              <option value="لا">لا</option>
+            </select>
+          </Field>
+          <Field
+            label="هل يوجد سجل تجاري وبطاقة ضريبية؟"
+            error={form.formState.errors.has_commercial_register_and_tax_card}
+          >
+            <select className="input-field" {...form.register("has_commercial_register_and_tax_card")}>
+              <option value="نعم">نعم</option>
+              <option value="لا">لا</option>
+            </select>
+          </Field>
           <Field label="الحالة الاجتماعية" error={form.formState.errors.marital_status}>
             <select className="input-field" {...form.register("marital_status")}>
               <option value="أعزب">أعزب</option>
