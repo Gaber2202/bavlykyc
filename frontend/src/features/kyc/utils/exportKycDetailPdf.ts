@@ -16,7 +16,8 @@ export function buildKycPdfFilename(r: { client_full_name: string; id: string })
 
 /**
  * Rasterizes a prepared DOM node (logo + “Client details” + tables) into a multi-page A4 PDF.
- * Dynamic import keeps the main bundle smaller until the user exports.
+ * Uses horizontal canvas slices per page — avoids the full-image + negative Y offset bug that
+ * produced black bands and mid-row “tears” between pages.
  */
 export async function exportKycDetailToPdf(
   element: HTMLElement,
@@ -37,25 +38,57 @@ export async function exportKycDetailToPdf(
     windowHeight: element.scrollHeight,
   });
 
-  const imgData = canvas.toDataURL("image/png", 1.0);
   const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
-  const marginX = 12;
-  const imgWidth = pageWidth - 2 * marginX;
-  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+  const margin = 12;
+  const contentWidth = pageWidth - 2 * margin;
+  const contentHeight = pageHeight - 2 * margin;
 
-  let heightLeft = imgHeight;
-  let y = 0;
+  /** Total height (mm) if the full canvas is drawn at `contentWidth`. */
+  const imgHeightMm = (canvas.height * contentWidth) / canvas.width;
+  /** Source pixels that correspond to 1 mm of printed height. */
+  const pxPerMm = canvas.height / imgHeightMm;
 
-  pdf.addImage(imgData, "PNG", marginX, y, imgWidth, imgHeight);
-  heightLeft -= pageHeight;
+  let yPx = 0;
+  let pageIndex = 0;
 
-  while (heightLeft > 0) {
-    y = heightLeft - imgHeight;
-    pdf.addPage();
-    pdf.addImage(imgData, "PNG", marginX, y, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
+  while (yPx < canvas.height) {
+    if (pageIndex > 0) {
+      pdf.addPage();
+    }
+
+    const remainingPx = canvas.height - yPx;
+    const maxSlicePx = Math.floor(contentHeight * pxPerMm);
+    const slicePx = Math.max(1, Math.min(maxSlicePx, remainingPx));
+
+    const sliceCanvas = document.createElement("canvas");
+    sliceCanvas.width = canvas.width;
+    sliceCanvas.height = slicePx;
+    const ctx = sliceCanvas.getContext("2d");
+    if (!ctx) {
+      throw new Error("Could not get canvas context");
+    }
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+    ctx.drawImage(
+      canvas,
+      0,
+      yPx,
+      canvas.width,
+      slicePx,
+      0,
+      0,
+      canvas.width,
+      slicePx,
+    );
+
+    const sliceHeightMm = (slicePx / canvas.height) * imgHeightMm;
+    const imgData = sliceCanvas.toDataURL("image/png", 1.0);
+    pdf.addImage(imgData, "PNG", margin, margin, contentWidth, sliceHeightMm);
+
+    yPx += slicePx;
+    pageIndex += 1;
   }
 
   pdf.save(filename);
