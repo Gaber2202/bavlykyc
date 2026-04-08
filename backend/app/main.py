@@ -12,6 +12,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncSession
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -86,6 +87,30 @@ def create_app() -> FastAPI:
         return JSONResponse(
             status_code=422,
             content=_validation_payload(exc),
+        )
+
+    @app.exception_handler(ProgrammingError)
+    async def sqlalchemy_programming_handler(
+        request: Request, exc: ProgrammingError
+    ) -> JSONResponse:
+        """Missing tables/columns (e.g. migrations not applied) surface as 500 otherwise."""
+        if settings.debug:
+            raise exc
+        raw = str(exc.orig) if getattr(exc, "orig", None) else str(exc)
+        lower = raw.lower()
+        if "does not exist" in lower and (
+            "column" in lower or "relation" in lower
+        ):
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "detail": "Database schema is behind the application version.",
+                    "hint": "On the server run: alembic upgrade head (e.g. migration 0006 adds KYC columns).",
+                },
+            )
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Database error"},
         )
 
     @app.exception_handler(Exception)
