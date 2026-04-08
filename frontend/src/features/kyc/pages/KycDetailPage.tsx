@@ -1,19 +1,27 @@
 import { apiFetch, formatApiErrorMessage } from "@/services/api";
 import { useAuthStore } from "@/stores/authStore";
 import type { KYCRecordDto } from "@/types/api";
+import { KycDetailPdfLayout } from "@/features/kyc/components/KycDetailPdfLayout";
 import {
   canAdminSoftDeleteKyc,
   canEditKycRecord,
 } from "@/features/kyc/utils/kycPermissions";
+import {
+  buildKycPdfFilename,
+  exportKycDetailToPdf,
+} from "@/features/kyc/utils/exportKycDetailPdf";
+import { getKycDetailSections } from "@/features/kyc/utils/kycDetailSections";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export function KycDetailPage() {
   const { id } = useParams();
   const nav = useNavigate();
   const qc = useQueryClient();
+  const pdfRootRef = useRef<HTMLDivElement>(null);
+  const [pdfExporting, setPdfExporting] = useState(false);
   const user = useAuthStore((s) => s.user);
   const kycEmployeeCanEditOthers = useAuthStore((s) => s.kycEmployeeCanEditOthers);
 
@@ -58,72 +66,25 @@ export function KycDetailPage() {
   const r = q.data;
   const canEdit = canEditKycRecord(user, r, kycEmployeeCanEditOthers);
   const canDelete = canAdminSoftDeleteKyc(user, r);
+  const sections = getKycDetailSections(r);
+  const pdfGeneratedLabel = `أُنشئ المستند: ${new Date().toLocaleString("ar-EG")}`;
 
-  const sections: { title: string; rows: [string, string][] }[] = [
-    {
-      title: "البيانات الأساسية",
-      rows: [
-        ["اسم الموظف", r.employee_name],
-        ["اسم العميل", r.client_full_name],
-        ["العمر", String(r.age)],
-        ["المسمى في الجواز", r.passport_job_title],
-        ["مسمى آخر", r.other_job_title ?? "—"],
-        ["فرع الخدمة", r.service_type],
-        ["المكلف", r.assigned_to ?? "—"],
-        ["تعيين تلقائي", r.assigned_by_rule ? "نعم" : "لا"],
-      ],
-    },
-    {
-      title: "المالية والاجتماعية",
-      rows: [
-        ["كشف حساب", r.has_bank_statement],
-        ["رصيد متاح", r.available_balance ?? "—"],
-        ["رصيد متوقع", r.expected_balance ?? "—"],
-        ["هل يوجد أملاك؟", r.has_property_assets],
-        ["تفاصيل الأملاك", r.property_assets_detail ?? "—"],
-        ["حساب دولاري", r.has_usd_account],
-        ["حساب بنكي مصري (وجود حساب)", r.has_bank_account],
-        ["سجل تجاري وبطاقة ضريبية", r.has_commercial_register_and_tax_card],
-        ["الحالة الاجتماعية", r.marital_status],
-        ["الأطفال", r.children_count != null ? String(r.children_count) : "—"],
-        ["هل ليك حد في الخارج؟", r.has_relatives_abroad],
-        ["صلة القرابة", r.relatives_kinship ?? "—"],
-        ["نوع الجنسية", r.nationality_type],
-        ["الجنسية", r.nationality ?? "—"],
-        ["الإقامة", r.residency_status ?? "—"],
-        ["المحافظة", r.governorate],
-      ],
-    },
-    {
-      title: "التواصل",
-      rows: [
-        ["الاستشارة", r.consultation_method],
-        ["البريد", r.email],
-        ["الهاتف", r.phone_number],
-        ["واتساب", r.whatsapp_number],
-      ],
-    },
-    {
-      title: "التأشيرات والرفض",
-      rows: [
-        ["رفض سابق", r.previous_rejected],
-        ["أرقام الرفض", r.rejection_numbers ?? "—"],
-        ["سبب الرفض", r.rejection_reason ?? "—"],
-        ["دولة الرفض", r.rejection_country ?? "—"],
-        ["تأشيرات سابقة", r.has_previous_visas],
-        ["دول التأشيرات", r.previous_visa_countries ?? "—"],
-      ],
-    },
-    {
-      title: "التوصية والحالة",
-      rows: [
-        ["التوصية", r.recommendation ?? "—"],
-        ["الحالة", r.status],
-        ["أنشئ في", new Date(r.created_at).toLocaleString("ar-EG")],
-        ["آخر تحديث", new Date(r.updated_at).toLocaleString("ar-EG")],
-      ],
-    },
-  ];
+  async function handleExportPdf() {
+    const el = pdfRootRef.current;
+    if (!el) {
+      toast.error("تعذر تجهيز الملف");
+      return;
+    }
+    setPdfExporting(true);
+    try {
+      await exportKycDetailToPdf(el, buildKycPdfFilename(r));
+      toast.success("تم تنزيل PDF");
+    } catch {
+      toast.error("تعذر إنشاء PDF");
+    } finally {
+      setPdfExporting(false);
+    }
+  }
 
   return (
     <div className="space-y-8 max-w-4xl">
@@ -133,6 +94,14 @@ export function KycDetailPage() {
           <p className="text-gold-600 text-sm mt-1 font-mono dir-ltr text-right">{r.id}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className="text-sm px-4 py-2 rounded-lg border border-gold-700/60 text-gold-200 hover:bg-gold-900/25 transition disabled:opacity-50"
+            disabled={pdfExporting}
+            onClick={() => void handleExportPdf()}
+          >
+            {pdfExporting ? "جاري PDF…" : "تنزيل PDF"}
+          </button>
           {canEdit ? (
             <Link className="btn-primary text-sm px-5" to={`/kyc/${r.id}/edit`}>
               تعديل السجل
@@ -194,6 +163,14 @@ export function KycDetailPage() {
       <Link to="/kyc" className="btn-ghost inline-block text-sm">
         ← قائمة KYC
       </Link>
+
+      <KycDetailPdfLayout
+        ref={pdfRootRef}
+        sections={sections}
+        recordId={r.id}
+        clientFullName={r.client_full_name}
+        generatedLabel={pdfGeneratedLabel}
+      />
     </div>
   );
 }
