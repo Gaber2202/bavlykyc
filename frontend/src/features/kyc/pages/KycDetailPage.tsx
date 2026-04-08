@@ -1,14 +1,19 @@
 import { apiFetch, formatApiErrorMessage } from "@/services/api";
 import { useAuthStore } from "@/stores/authStore";
 import type { KYCRecordDto } from "@/types/api";
-import { canEmployeeEditKyc } from "@/features/kyc/utils/kycPermissions";
-import { useQuery } from "@tanstack/react-query";
-import { Link, useParams } from "react-router-dom";
+import {
+  canAdminSoftDeleteKyc,
+  canEditKycRecord,
+} from "@/features/kyc/utils/kycPermissions";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useEffect } from "react";
 
 export function KycDetailPage() {
   const { id } = useParams();
+  const nav = useNavigate();
+  const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const kycEmployeeCanEditOthers = useAuthStore((s) => s.kycEmployeeCanEditOthers);
 
@@ -16,6 +21,19 @@ export function KycDetailPage() {
     queryKey: ["kyc", id],
     queryFn: () => apiFetch<KYCRecordDto>(`/kyc/${id}`),
     enabled: Boolean(id),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: () => {
+      if (!id) throw new Error("missing id");
+      return apiFetch<void>(`/kyc/${id}`, { method: "DELETE" });
+    },
+    onSuccess: () => {
+      toast.success("تم الحذف المنطقي للسجل");
+      void qc.invalidateQueries({ queryKey: ["kyc"] });
+      nav("/kyc");
+    },
+    onError: (e) => toast.error(formatApiErrorMessage(e)),
   });
 
   useEffect(() => {
@@ -38,7 +56,8 @@ export function KycDetailPage() {
   }
 
   const r = q.data;
-  const canEdit = canEmployeeEditKyc(user, r, kycEmployeeCanEditOthers);
+  const canEdit = canEditKycRecord(user, r, kycEmployeeCanEditOthers);
+  const canDelete = canAdminSoftDeleteKyc(user, r);
 
   const sections: { title: string; rows: [string, string][] }[] = [
     {
@@ -113,18 +132,36 @@ export function KycDetailPage() {
           <h1 className="text-2xl font-bold text-gold-200">تفاصيل KYC</h1>
           <p className="text-gold-600 text-sm mt-1 font-mono dir-ltr text-right">{r.id}</p>
         </div>
-        {canEdit ? (
-          <Link
-            className="btn-primary text-sm px-5"
-            to={`/kyc/${r.id}/edit`}
-          >
-            تعديل السجل
-          </Link>
-        ) : (
-          <span className="text-gold-600 text-sm border border-gold-800/50 rounded-lg px-3 py-2 bg-ink/60">
-            لا تملك صلاحية التعديل على هذا السجل
-          </span>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {canEdit ? (
+            <Link className="btn-primary text-sm px-5" to={`/kyc/${r.id}/edit`}>
+              تعديل السجل
+            </Link>
+          ) : (
+            <span className="text-gold-600 text-sm border border-gold-800/50 rounded-lg px-3 py-2 bg-ink/60">
+              لا تملك صلاحية التعديل على هذا السجل
+            </span>
+          )}
+          {canDelete && (
+            <button
+              type="button"
+              className="text-sm px-4 py-2 rounded-lg border border-red-800/60 text-red-300/95 hover:bg-red-950/40 transition disabled:opacity-50"
+              disabled={deleteMut.isPending}
+              onClick={() => {
+                if (
+                  !window.confirm(
+                    "حذف منطقي لهذا السجل؟ لن يظهر في القوائم العادية ويمكن للمسؤول عرضه عند تفعيل «عرض المحذوفة».",
+                  )
+                ) {
+                  return;
+                }
+                deleteMut.mutate();
+              }}
+            >
+              {deleteMut.isPending ? "جاري الحذف…" : "حذف منطقي (مسؤول)"}
+            </button>
+          )}
+        </div>
       </div>
 
       {r.soft_deleted_at && (

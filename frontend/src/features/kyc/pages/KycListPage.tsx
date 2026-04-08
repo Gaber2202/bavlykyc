@@ -5,10 +5,14 @@ import {
   isKycListSortField,
   type KycListSortField,
 } from "@/features/kyc/utils/kycListQuery";
+import {
+  canAdminSoftDeleteKyc,
+  canEditKycRecord,
+} from "@/features/kyc/utils/kycPermissions";
 import { apiFetch, formatApiErrorMessage } from "@/services/api";
 import { useAuthStore } from "@/stores/authStore";
 import type { AdminUserRow, KYCRecordDto, PaginatedResponse } from "@/types/api";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createColumnHelper,
   flexRender,
@@ -22,8 +26,19 @@ import { toast } from "sonner";
 const col = createColumnHelper<KYCRecordDto>();
 
 export function KycListPage() {
+  const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
+  const kycEmployeeCanEditOthers = useAuthStore((s) => s.kycEmployeeCanEditOthers);
   const isAdmin = user?.role === "admin";
+
+  const deleteMut = useMutation({
+    mutationFn: (kycId: string) => apiFetch<void>(`/kyc/${kycId}`, { method: "DELETE" }),
+    onSuccess: () => {
+      toast.success("تم الحذف المنطقي للسجل");
+      void qc.invalidateQueries({ queryKey: ["kyc"] });
+    },
+    onError: (e) => toast.error(formatApiErrorMessage(e)),
+  });
 
   const [page, setPage] = useState(1);
   const pageSize = 20;
@@ -150,25 +165,52 @@ export function KycListPage() {
       col.display({
         id: "actions",
         header: "",
-        cell: (ctx) => (
-          <div className="flex gap-2 justify-end">
-            <Link
-              className="text-gold-300 underline text-sm whitespace-nowrap"
-              to={`/kyc/${ctx.row.original.id}`}
-            >
-              تفاصيل
-            </Link>
-            <Link
-              className="text-gold-400 underline text-sm whitespace-nowrap"
-              to={`/kyc/${ctx.row.original.id}/edit`}
-            >
-              تعديل
-            </Link>
-          </div>
-        ),
+        cell: (ctx) => {
+          const row = ctx.row.original;
+          const rowEdit = canEditKycRecord(user, row, kycEmployeeCanEditOthers);
+          const rowDel = canAdminSoftDeleteKyc(user, row);
+          const deletingThis = deleteMut.isPending && deleteMut.variables === row.id;
+          return (
+            <div className="flex gap-2 justify-end flex-wrap">
+              <Link
+                className="text-gold-300 underline text-sm whitespace-nowrap"
+                to={`/kyc/${row.id}`}
+              >
+                تفاصيل
+              </Link>
+              {rowEdit && (
+                <Link
+                  className="text-gold-400 underline text-sm whitespace-nowrap"
+                  to={`/kyc/${row.id}/edit`}
+                >
+                  تعديل
+                </Link>
+              )}
+              {rowDel && (
+                <button
+                  type="button"
+                  className="text-red-400/90 underline text-sm whitespace-nowrap disabled:opacity-50"
+                  disabled={deleteMut.isPending}
+                  onClick={() => {
+                    if (
+                      !window.confirm(
+                        `حذف منطقي لسجل «${row.client_full_name}»؟`,
+                      )
+                    ) {
+                      return;
+                    }
+                    deleteMut.mutate(row.id);
+                  }}
+                >
+                  {deletingThis ? "…" : "حذف"}
+                </button>
+              )}
+            </div>
+          );
+        },
       }),
     ],
-    [],
+    [user, kycEmployeeCanEditOthers, deleteMut.isPending, deleteMut.variables],
   );
 
   const table = useReactTable({
@@ -376,7 +418,9 @@ export function KycListPage() {
               {table.getRowModel().rows.map((row) => (
                 <tr
                   key={row.id}
-                  className="border-b border-gold-900/35 hover:bg-gold-900/10 transition-colors"
+                  className={`border-b border-gold-900/35 hover:bg-gold-900/10 transition-colors ${
+                    row.original.soft_deleted_at ? "opacity-55" : ""
+                  }`}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <td key={cell.id} className="px-3 py-2.5 text-gold-100/95">

@@ -103,9 +103,11 @@ async def soft_delete_kyc(
     ip_address: str | None,
     user_agent: str | None,
 ) -> None:
-    row = await kyc_repository.get_by_id(session, kyc_id)
+    row = await kyc_repository.get_by_id(session, kyc_id, include_deleted=True)
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "السجل غير موجود")
+    if row.soft_deleted_at is not None:
+        return
     await kyc_repository.soft_delete(session, row)
     await audit_service.log(
         session,

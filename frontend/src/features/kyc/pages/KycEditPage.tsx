@@ -3,7 +3,7 @@ import { apiFetch, formatApiErrorMessage } from "@/services/api";
 import { useAuthStore } from "@/stores/authStore";
 import type { KYCRecordDto } from "@/types/api";
 import { recordToFormDefaults, toUpdatePayload } from "@/features/kyc/utils/kycPayload";
-import { canEmployeeEditKyc } from "@/features/kyc/utils/kycPermissions";
+import { canEditKycRecord } from "@/features/kyc/utils/kycPermissions";
 import { defaultKycValues, type KycFormValues } from "@/features/kyc/utils/kycZod";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useParams, Link } from "react-router-dom";
@@ -44,7 +44,7 @@ export function KycEditPage() {
     );
   }
 
-  const canEdit = canEmployeeEditKyc(user, q.data, kycEmployeeCanEditOthers);
+  const canEdit = canEditKycRecord(user, q.data, kycEmployeeCanEditOthers);
 
   async function onSubmit(values: KycFormValues) {
     try {
@@ -64,8 +64,9 @@ export function KycEditPage() {
       <div className="max-w-lg space-y-4 glass-panel p-8 border-amber-900/40">
         <h1 className="text-xl font-semibold text-gold-200">لا يمكن التعديل</h1>
         <p className="text-gold-400 text-sm leading-relaxed">
-          سياسة النظام تسمح لك بتعديل السجلات التي أنشأها حسابك فقط، ما لم يمنحك المسؤول صلاحية
-          تعديل سجلات الآخرين.
+          {q.data.soft_deleted_at != null
+            ? "هذا السجل محذوف منطقياً ولا يمكن تعديله."
+            : "سياسة النظام تسمح لك بتعديل السجلات التي أنشأها حسابك فقط، ما لم يمنحك المسؤول صلاحية تعديل سجلات الآخرين."}
         </p>
         <Link to={`/kyc/${id}`} className="btn-ghost inline-block text-sm">
           العودة للتفاصيل
